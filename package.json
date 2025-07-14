@@ -17,7 +17,7 @@
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
 		"test:e2e": "./tests/e2e/run_e2e.sh",
 		"test:e2e-report": "./tests/e2e/run_e2e.sh --analyze-log",
-		"prepare": "chmod +x bin/task-master.js mcp-server/server.js",
+		"prepare": "shx chmod +x bin/task-master.js mcp-server/server.js",
 		"changeset": "changeset",
 		"release": "changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
@@ -124,6 +124,7 @@
 		"mock-fs": "^5.5.0",
 		"prettier": "^3.5.3",
 		"react": "^18.3.1",
+		"shx": "^0.4.0",
 		"supertest": "^7.1.0",
 		"tsx": "^4.16.2"
 	}
