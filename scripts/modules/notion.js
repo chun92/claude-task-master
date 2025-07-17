@@ -247,7 +247,9 @@ function flattenTasksWithTag(tasks, tag) {
                         return dep;
                     });
                 }
-                arr.push({ id: subId, task: { ...st, id: subId, dependencies: newDeps, _parentId: t.id, _isSubtask: true }, tag });
+                // Inherit priority from parent if not set
+                const subtaskPriority = st.priority !== undefined ? st.priority : t.priority;
+                arr.push({ id: subId, task: { ...st, id: subId, dependencies: newDeps, _parentId: t.id, _isSubtask: true, priority: subtaskPriority }, tag });
             }
         }
         // Replace subtasks field with flattenedSubtaskIds
@@ -279,7 +281,9 @@ function flattenTasksMap(tasks) {
                         return dep;
                     });
                 }
-                map.set(subId, { ...st, id: subId, dependencies: newDeps, _parentId: t.id, _isSubtask: true });
+                // Inherit priority from parent if not set
+                const subtaskPriority = st.priority !== undefined ? st.priority : t.priority;
+                map.set(subId, { ...st, id: subId, dependencies: newDeps, _parentId: t.id, _isSubtask: true, priority: subtaskPriority });
             }
         }
         // Replace subtasks field with flattenedSubtaskIds
@@ -451,7 +455,7 @@ function buildNotionRelationProperties(task, tag, mapping) {
                     ? { type: 'text', text: { content: String(id), link: { url } } }
                     : { type: 'text', text: { content: String(id) } }
             );
-            // 마지막이 아니면 separator 추가
+            // Add separator if not the last element
             if (separator && idx < ids.length - 1) {
                 result.push({ type: 'text', text: { content: separator } });
             }
@@ -551,12 +555,30 @@ async function updateNotionComplexityForCurrentTag(projectRoot, debug = false) {
         if (match) {
             // Only update if the complexity is different
             if (task.complexity !== match.complexityScore) {
-                // Update Notion
+                // Update Notion for parent
                 try {
                     await updateTaskInNotion({ ...task, complexity: match.complexityScore }, tag, mapping, meta);
                     updatedCount++;
                 } catch (e) {
                     console.error(`Failed to update Notion complexity for task id=${task.id}, title="${task.title}":`, e.message);
+                }
+                // Update Notion for subtasks (if any)
+                if (Array.isArray(task.subtasks) && task.subtasks.length > 0) {
+                    for (const subId of task.subtasks) {
+                        // subtasks are flattened as "parentId.subId" by flattenTasksWithTag
+                        // Here, the subtasks array is a flattened id array
+                        // Check if the Notion page id exists in mapping, then update
+                        const subtaskNotionId = getNotionPageId(mapping, tag, subId);
+                        if (subtaskNotionId) {
+                            try {
+                                // The original subtask info is not in the tasks array, so only pass the id to update complexity
+                                await updateTaskInNotion({ id: subId, complexity: match.complexityScore }, tag, mapping, meta);
+                                updatedCount++;
+                            } catch (e) {
+                                console.error(`Failed to update Notion complexity for subtask id=${subId} (parent id=${task.id}):`, e.message);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -578,7 +600,7 @@ async function deleteTaskFromNotion(task, tag, mapping, meta) {
 /**
  * Ensures all tasks (tasksObj: tag -> {tasks: [...]}) have Notion mapping (Notion page exists for each task/subtask).
  * Returns updated mapping.
- * Can be used for prevTasks, curTasks 등 모든 태스크 객체에 사용 가능.
+ * Can be used for any task object, such as prevTasks or curTasks.
  */
 async function ensureAllTasksHaveNotionMapping(tasksObj, mapping, meta, mappingFile, debug = false) {
     for (const tag of Object.keys(tasksObj || {})) {
