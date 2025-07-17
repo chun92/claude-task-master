@@ -309,6 +309,20 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			description: `Tasks for ${targetTag} context`
 		});
 
+		(async () => {
+			try {
+				const { syncTasksWithNotion } = await import('../notion.js');
+				console.log('--- syncTasksWithNotion (debug=false) ---');
+				syncTasksWithNotion(
+					{},
+					outputData,
+					{ debug: true }
+				);
+			} catch (e) {
+				console.warn('syncTasksWithNotion debug failed:', e);
+			}
+		})();
+		
 		// Write the complete data structure back to the file
 		fs.writeFileSync(tasksPath, JSON.stringify(outputData, null, 2));
 		report(

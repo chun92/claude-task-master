@@ -1,0 +1,748 @@
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+import { Client } from '@notionhq/client';
+import { COMPLEXITY_REPORT_FILE, TASKMASTER_TASKS_FILE } from '../../src/constants/paths.js';
+import { getCurrentTag, readJSON } from './utils.js';
+
+// Usage: load env and create Notion client
+const { NOTION_TOKEN, NOTION_DATABASE_ID } = loadNotionEnv();
+const notion = new Client({ auth: NOTION_TOKEN });
+
+const TASKMASTER_NOTION_SYNC_FILE = '.taskmaster/notion-sync.json';
+
+/**
+ * Loads .env file and returns Notion credentials (token, database id)
+ * @param {string} [envPath] - Optional path to .env file (default: project root)
+ * @returns {{ NOTION_TOKEN: string, NOTION_DATABASE_ID: string }}
+ */
+function formatAsUUID(id) {
+    // If already UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx), return as is
+    if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) {
+        return id;
+    }
+    // Remove all non-hex chars
+    const hex = (id || '').replace(/[^0-9a-fA-F]/g, '');
+    if (hex.length !== 32) return id; // Not a valid Notion DB id
+    // Insert dashes
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function loadNotionEnv(envPath) {
+    // Default: look for .env in project root
+    let envFile = envPath;
+    if (!envFile) {
+        // Try cwd, then parent
+        const cwdEnv = path.join(process.cwd(), '.env');
+        if (fs.existsSync(cwdEnv)) {
+            envFile = cwdEnv;
+        } else {
+            const parentEnv = path.join(path.dirname(process.cwd()), '.env');
+            envFile = fs.existsSync(parentEnv) ? parentEnv : null;
+        }
+    }
+    let envVars = {};
+    if (envFile && fs.existsSync(envFile)) {
+        envVars = dotenv.parse(fs.readFileSync(envFile));
+    } else {
+        // fallback to process.env
+        envVars = process.env;
+    }
+    return {
+        NOTION_TOKEN: envVars.NOTION_TOKEN || '',
+        NOTION_DATABASE_ID: formatAsUUID(envVars.NOTION_DATABASE_ID || '')
+    };
+}
+
+/**
+
+/**
+ * Reads the COMPLEXITY_REPORT_FILE and returns an array of { id, complexityScore, title } objects.
+ * Only extracts id, complexityScore, and title from the complexityAnalysis array.
+ * @param {string} [file] - Optional path to the complexity report file (default: COMPLEXITY_REPORT_FILE)
+ * @returns {Array<{id: number|string, complexityScore: number, title: string}>}
+ */
+function getTaskComplexityInfo(file = COMPLEXITY_REPORT_FILE) {
+    try {
+        if (!fs.existsSync(file)) {
+            console.error(`[Notion] Complexity report file not found: ${file}`);
+            return [];
+        }
+        const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+        if (!Array.isArray(data.complexityAnalysis)) {
+            console.error(`[Notion] Invalid complexityAnalysis format in ${file}`);
+            return [];
+        }
+        const result = [];
+        for (const entry of data.complexityAnalysis) {
+            if (
+                entry &&
+                typeof entry.taskId !== 'undefined' &&
+                typeof entry.complexityScore !== 'undefined' &&
+                typeof entry.taskTitle === 'string'
+            ) {
+                result.push({ id: entry.taskId, complexityScore: entry.complexityScore, title: entry.taskTitle });
+            }
+        }
+        return result;
+    } catch (e) {
+        console.error('Failed to read task complexity info:', e);
+        return [];
+    }
+}
+
+/**
+ * Compares two objects (previous, current), normalizes them, and returns a list of changes (added, deleted, updated).
+ * @param {Object} previous - Previous tasks object
+ * @param {Object} current - Current tasks object
+ * @param {Object} [options] - Options object
+ * @param {boolean} [options.debug=false] - If true, prints diff details to console
+ * @returns {Array<{id: number, type: 'added'|'deleted'|'updated', prev?: Object, cur?: Object}>}
+ */
+function diffTasks(previous, current, options = {}) {
+    const { debug = false } = options;
+    // Defensive: treat null/undefined as empty object
+    const prevObj = previous && typeof previous === 'object' ? previous : {};
+    const curObj = current && typeof current === 'object' ? current : {};
+
+    // Get all tag names
+    const prevTags = Object.keys(prevObj).filter(tag => prevObj[tag] && Array.isArray(prevObj[tag].tasks));
+    const curTags = Object.keys(curObj).filter(tag => curObj[tag] && Array.isArray(curObj[tag].tasks));
+    const allTags = Array.from(new Set([...prevTags, ...curTags]));
+
+    const changes = [];
+
+    for (const tag of allTags) {
+        const prevTagTasks = prevObj[tag]?.tasks || [];
+        const curTagTasks = curObj[tag]?.tasks || [];
+
+        // If tag exists only in prev, all tasks/subtasks in prev are deleted
+        if (prevTags.includes(tag) && !curTags.includes(tag)) {
+            // flatten prevTagTasks
+            for (const change of flattenTasksWithTag(prevTagTasks, tag)) {
+                changes.push({ id: change.id, type: 'deleted', prev: change.task, tag });
+            }
+            continue;
+        }
+        // If tag exists only in cur, all tasks/subtasks in cur are added
+        if (!prevTags.includes(tag) && curTags.includes(tag)) {
+            for (const change of flattenTasksWithTag(curTagTasks, tag)) {
+                changes.push({ id: change.id, type: 'added', cur: change.task, tag });
+            }
+            continue;
+        }
+        // If tag exists in both, compare as before
+        const prevMap = flattenTasksMap(prevTagTasks);
+        const curMap = flattenTasksMap(curTagTasks);
+
+        // deleted/updated
+        for (const [id, prevTask] of prevMap.entries()) {
+            if (!curMap.has(id)) {
+                changes.push({ id, type: 'deleted', prev: prevTask, tag });
+            } else {
+                const curTask = curMap.get(id);
+                if (!isTaskEqual(prevTask, curTask)) {
+                    changes.push({ id, type: 'updated', prev: prevTask, cur: curTask, tag });
+                }
+            }
+        }
+        // added
+        for (const [id, curTask] of curMap.entries()) {
+            if (!prevMap.has(id)) {
+                changes.push({ id, type: 'added', cur: curTask, tag });
+            }
+        }
+    }
+
+    // --- moved detection ---
+    // 1. Extract only added and deleted
+    const added = changes.filter(c => c.type === 'added');
+    const deleted = changes.filter(c => c.type === 'deleted');
+    const moved = [];
+
+    // 2. Compare deleted and added to each other
+    for (const del of deleted) {
+        for (const add of added) {
+            // moved criteria: if title, description, details, testStrategy, status are all equal, treat as moved
+            const fields = ['title', 'description', 'details', 'testStrategy', 'status'];
+            let same = true;
+            for (const f of fields) {
+                const prevVal = del.prev?.[f] || '';
+                const curVal = add.cur?.[f] || '';
+                if (prevVal !== curVal) {
+                    same = false;
+                    break;
+                }
+            }
+            if (same) {
+                moved.push({
+                    id: del.id, // prev id
+                    cur_id: add.id, // new id
+                    type: 'moved',
+                    prev: del.prev,
+                    cur: add.cur,
+                    prev_tag: del.tag,
+                    tag: add.tag
+                });
+                // Mark as matched so it won't be compared again
+                del._matched = true;
+                add._matched = true;
+                break;
+            }
+        }
+    }
+
+    // 3. Remove items classified as moved from added/deleted
+    const finalChanges = [
+        ...changes.filter(c => c.type !== 'added' && c.type !== 'deleted'),
+        ...added.filter(a => !a._matched),
+        ...deleted.filter(d => !d._matched),
+        ...moved
+    ];
+
+    // --- batch debug output ---
+    if (debug) {
+        for (const c of finalChanges) {
+            if (c.type === 'added') {
+                console.log(`[ADDED][${c.tag}] id=${c.id}`, c.cur);
+            } else if (c.type === 'deleted') {
+                console.log(`[DELETED][${c.tag}] id=${c.id}`, c.prev);
+            } else if (c.type === 'updated') {
+                console.log(`[UPDATED][${c.tag}] id=${c.id}`);
+                printTaskDiff(c.prev, c.cur, c.tag, c.tag);
+            } else if (c.type === 'moved') {
+                const oldTag = c.prev_tag
+                const newTag = c.tag;
+                console.log(`[MOVED] [${oldTag}] ${c.id} => [${newTag}] ${c.cur_id}`);
+                printTaskDiff(c.prev, c.cur, oldTag, newTag);
+            }
+        }
+    }
+
+    return finalChanges;
+}
+
+// Helper: flatten tasks/subtasks for a tag, returns array of {id, task}
+function flattenTasksWithTag(tasks, tag) {
+    const arr = [];
+    for (const t of tasks) {
+        let flattenedSubtaskIds = [];
+        if (Array.isArray(t.subtasks)) {
+            // Collect all subtask ids for this parent
+            const subtaskIds = t.subtasks.map(st => st.id);
+            flattenedSubtaskIds = t.subtasks.map(st => `${t.id}.${st.id}`);
+            for (const st of t.subtasks) {
+                const subId = `${t.id}.${st.id}`;
+                // Convert dependencies
+                let newDeps = st.dependencies;
+                if (Array.isArray(st.dependencies)) {
+                    newDeps = st.dependencies.map(dep => {
+                        if (typeof dep === 'string' && dep.includes('.')) return dep;
+                        if (
+                            (typeof dep === 'number' || (typeof dep === 'string' && /^\d+$/.test(dep))) &&
+                            subtaskIds.includes(Number(dep))
+                        ) {
+                            return `${t.id}.${dep}`;
+                        }
+                        return dep;
+                    });
+                }
+                arr.push({ id: subId, task: { ...st, id: subId, dependencies: newDeps, _parentId: t.id, _isSubtask: true }, tag });
+            }
+        }
+        // Replace subtasks field with flattenedSubtaskIds
+        arr.push({ id: t.id, task: { ...t, _isSubtask: false, subtasks: flattenedSubtaskIds }, tag });
+    }
+    return arr;
+}
+
+// Helper: flatten tasks/subtasks for a tag, returns Map(id, task)
+function flattenTasksMap(tasks) {
+    const map = new Map();
+    for (const t of tasks) {
+        let flattenedSubtaskIds = [];
+        if (Array.isArray(t.subtasks)) {
+            const subtaskIds = t.subtasks.map(st => st.id);
+            flattenedSubtaskIds = t.subtasks.map(st => `${t.id}.${st.id}`);
+            for (const st of t.subtasks) {
+                const subId = `${t.id}.${st.id}`;
+                let newDeps = st.dependencies;
+                if (Array.isArray(st.dependencies)) {
+                    newDeps = st.dependencies.map(dep => {
+                        if (typeof dep === 'string' && dep.includes('.')) return dep;
+                        if (
+                            (typeof dep === 'number' || (typeof dep === 'string' && /^\d+$/.test(dep))) &&
+                            subtaskIds.includes(Number(dep))
+                        ) {
+                            return `${t.id}.${dep}`;
+                        }
+                        return dep;
+                    });
+                }
+                map.set(subId, { ...st, id: subId, dependencies: newDeps, _parentId: t.id, _isSubtask: true });
+            }
+        }
+        // Replace subtasks field with flattenedSubtaskIds
+        map.set(t.id, { ...t, _isSubtask: false, subtasks: flattenedSubtaskIds });
+    }
+    return map;
+}
+
+// Helper: compare two tasks or subtasks (compares dependencies and subtasks arrays)
+function isTaskEqual(a, b) {
+    if (!a || !b) return false;
+    // Compare all primitive fields except dependencies and subtasks
+    const keys = [
+        'title', 'description', 'details', 'testStrategy', 'priority', 'status'
+    ];
+    for (const k of keys) {
+        if (a[k] !== b[k]) return false;
+    }
+    // Compare dependencies array (order matters)
+    const arrA = Array.isArray(a.dependencies) ? a.dependencies : [];
+    const arrB = Array.isArray(b.dependencies) ? b.dependencies : [];
+    if (arrA.length !== arrB.length) return false;
+    for (let i = 0; i < arrA.length; i++) {
+        if (arrA[i] !== arrB[i]) return false;
+    }
+    // Compare subtasks array (order matters)
+    const subA = Array.isArray(a.subtasks) ? a.subtasks : [];
+    const subB = Array.isArray(b.subtasks) ? b.subtasks : [];
+    if (subA.length !== subB.length) return false;
+    for (let i = 0; i < subA.length; i++) {
+        if (subA[i] !== subB[i]) return false;
+    }
+    return true;
+}
+
+// Helper: pretty print diff between two tasks or subtasks (now includes dependencies and subtasks array)
+function printTaskDiff(a, b, prev_tag, cur_tag) {
+    const keys = [
+        'id', 'title', 'description', 'details', 'testStrategy', 'priority', 'status', 'tag'
+    ];
+    for (const k of keys) {
+        if (a[k] !== b[k]) {
+            console.log(`  ${k}:`, a[k], '=>', b[k]);
+        }
+    }
+    // Print dependencies diff
+    const arrA = Array.isArray(a.dependencies) ? a.dependencies : [];
+    const arrB = Array.isArray(b.dependencies) ? b.dependencies : [];
+    if (arrA.length !== arrB.length || arrA.some((v, i) => v !== arrB[i])) {
+        console.log('  dependencies:', arrA, '=>', arrB);
+    }
+    // Print subtasks diff
+    const subA = Array.isArray(a.subtasks) ? a.subtasks : [];
+    const subB = Array.isArray(b.subtasks) ? b.subtasks : [];
+    if (subA.length !== subB.length || subA.some((v, i) => v !== subB[i])) {
+        console.log('  subtasks:', subA, '=>', subB);
+    }
+    // Print tag diff
+    if (prev_tag !== cur_tag) {
+        console.log(`  tag: ${prev_tag || 'undefined'} => ${cur_tag || 'undefined'}`);
+    }
+}
+
+
+// --- Notion sync mapping helpers (tag -> id -> notionPageId) ---
+
+/**
+ * Loads the Notion sync mapping file. Returns { mapping, meta } object.
+ * If file does not exist, returns empty mapping/meta.
+ */
+function loadNotionSyncMapping(file = TASKMASTER_NOTION_SYNC_FILE) {
+    try {
+        if (fs.existsSync(file)) {
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+            return {
+                mapping: data.mapping || {},
+                meta: data.meta || {}
+            };
+        }
+    } catch (e) {
+        console.error('Failed to load Notion sync mapping:', e);
+    }
+    return { mapping: {}, meta: {} };
+}
+
+/**
+ * Saves the Notion sync mapping file. mapping: {tag: {id: notionId}}, meta: object
+ */
+function saveNotionSyncMapping(mapping, meta = {}, file = TASKMASTER_NOTION_SYNC_FILE) {
+    try {
+        const data = { mapping, meta };
+        fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Failed to save Notion sync mapping:', e);
+    }
+}
+
+/**
+ * Get Notion page id for a given tag and id. Returns undefined if not found.
+ */
+function getNotionPageId(mapping, tag, id) {
+    return mapping?.[tag]?.[id];
+}
+
+/**
+ * Set Notion page id for a given tag and id. Returns new mapping object.
+ */
+function setNotionPageId(mapping, tag, id, notionId) {
+    const newMapping = { ...mapping };
+    if (!newMapping[tag]) newMapping[tag] = {};
+    newMapping[tag][id] = notionId;
+    return newMapping;
+}
+
+/**
+ * Remove Notion page id for a given tag and id. Returns new mapping object.
+ */
+function removeNotionPageId(mapping, tag, id) {
+    const newMapping = { ...mapping };
+    if (newMapping[tag]) {
+        delete newMapping[tag][id];
+        if (Object.keys(newMapping[tag]).length === 0) {
+            delete newMapping[tag];
+        }
+    }
+    return newMapping;
+}
+
+// --- Notion-related API functions start here ---
+// Notion property mapping function
+function buildNotionProperties(task, tag, now = new Date()) {
+    // Date property logic
+    const dateProps = buildDateProperties(task, now);
+
+    return {
+        title: { title: [{ text: { content: task.title || '' } }] },
+        description: { rich_text: [{ text: { content: task.description || '' } }] },
+        details: { rich_text: [{ text: { content: task.details || '' } }] },
+        testStrategy: { rich_text: [{ text: { content: task.testStrategy || '' } }] },
+        taskid: { rich_text: [{ text: { content: String(task.id) } }] },
+        tag: { rich_text: [{ text: { content: tag } }] },
+        priority: task.priority ? { select: { name: task.priority } } : undefined,
+        status: task.status ? { status: { name: task.status } } : undefined,
+        complexity: task.complexity !== undefined ? { number: task.complexity } : undefined,
+        ...dateProps
+    };
+}
+
+/**
+ * Returns Notion relation properties (dependencies, subtasks) for a task.
+ * @param {Object} task
+ * @param {string} tag
+ * @param {Object} mapping
+ * @returns {Object} { dependencies, subtasks }
+ */
+function buildNotionRelationProperties(task, tag, mapping) {
+    // Helper to get Notion page url for a given id (returns undefined if not found)
+    function getPageUrl(id) {
+        const pageId = getNotionPageId(mapping, tag, id);
+        return pageId ? `https://www.notion.so/${pageId.replace(/-/g, '')}` : undefined;
+    }
+
+    function buildRichTextLinks(ids, getPageUrl, separator = ', ') {
+        const result = [];
+        ids.forEach((id, idx) => {
+            const url = getPageUrl(id);
+            result.push(
+                url
+                    ? { type: 'text', text: { content: String(id), link: { url } } }
+                    : { type: 'text', text: { content: String(id) } }
+            );
+            // 마지막이 아니면 separator 추가
+            if (separator && idx < ids.length - 1) {
+                result.push({ type: 'text', text: { content: separator } });
+            }
+        });
+        return result;
+    }
+
+    const props = {};
+    if (Array.isArray(task.dependencies)) {
+        props.dependencies = { rich_text: buildRichTextLinks(task.dependencies, getPageUrl) };
+    }
+    if (Array.isArray(task.subtasks)) {
+        props.subtasks = { rich_text: buildRichTextLinks(task.subtasks, getPageUrl) };
+    }
+    return props;
+}
+
+/**
+ * Returns startDate and endDate properties for Notion based on task status and current time.
+ * - startDate: set/updated if status is in-progress
+ * - endDate: set/updated if status is done or cancelled
+ * @param {Object} task
+ * @param {Date} now
+ * @returns {Object} { startDate, endDate }
+ */
+function buildDateProperties(task, now = new Date()) {
+    const isoNow = now.toISOString();
+    const props = {};
+    // startDate: only update if status is in-progress
+    if (task.status === 'in-progress') {
+        props.startDate = { date: { start: isoNow } };
+    } else if (task.startDate) {
+        // preserve existing if present
+        props.startDate = { date: { start: task.startDate } };
+    }
+    // endDate: only update if status is done or cancelled
+    if (task.status === 'done' || task.status === 'cancelled') {
+        props.endDate = { date: { start: isoNow } };
+    } else if (task.endDate) {
+        // preserve existing if present
+        props.endDate = { date: { start: task.endDate } };
+    }
+    return props;
+}
+
+// Add a task to Notion
+async function addTaskToNotion(task, tag, mapping, meta) {
+    const properties = buildNotionProperties(task, tag);
+    const response = await notion.pages.create({
+        parent: { database_id: NOTION_DATABASE_ID },
+        properties
+    });
+    const notionId = response.id;
+    const newMapping = setNotionPageId(mapping, tag, task.id, notionId);
+    saveNotionSyncMapping(newMapping, meta);
+    return notionId;
+}
+
+// Update a task in Notion
+async function updateTaskInNotion(task, tag, mapping, meta) {
+    const notionId = getNotionPageId(mapping, tag, task.id);
+    if (!notionId) throw new Error('Notion page id not found for update');
+    const properties = buildNotionProperties(task, tag);
+    await notion.pages.update({
+        page_id: notionId,
+        properties
+    });
+    saveNotionSyncMapping(mapping, meta);
+}
+
+/**
+ * Updates Notion complexity property for tasks in the current tag that match id and title from COMPLEXITY_REPORT_FILE.
+ * Only updates tasks where id and title both match.
+ * @param {boolean} [debug=false] - If true, prints update log to console
+ */
+async function updateNotionComplexityForCurrentTag(projectRoot, debug = false) {
+    const tag = getCurrentTag(projectRoot);
+    const data = readJSON(TASKMASTER_TASKS_FILE, projectRoot, tag);
+    const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
+    const complexityInfo = getTaskComplexityInfo();
+    // Load mapping
+    let { mapping, meta } = loadNotionSyncMapping();
+
+    // --- Ensure all tasks have Notion mapping ---
+    const prevMapping = JSON.stringify(mapping);
+    mapping = await ensureAllTasksHaveNotionMapping(data._rawTaggedData, mapping, meta, TASKMASTER_NOTION_SYNC_FILE, debug);
+    // --- Only update relations if mapping changed (i.e., new pages were added) ---
+    if (JSON.stringify(mapping) !== prevMapping) {
+        await updateAllTaskRelationsInNotion(data._rawTaggedData, mapping, meta, TASKMASTER_NOTION_SYNC_FILE, debug);
+    }
+
+    let updatedCount = 0;
+    for (const task of tasks) {
+        const match = complexityInfo.find(
+            (info) => String(info.id) === String(task.id) && info.title === task.title
+        );
+        if (match) {
+            // Only update if the complexity is different
+            if (task.complexity !== match.complexityScore) {
+                // Update Notion
+                try {
+                    await updateTaskInNotion({ ...task, complexity: match.complexityScore }, tag, mapping, meta);
+                    updatedCount++;
+                } catch (e) {
+                    console.error(`Failed to update Notion complexity for task id=${task.id}, title="${task.title}":`, e.message);
+                }
+            }
+        }
+    }
+    if (debug) {
+        console.log(`[Notion] Updated complexity for ${updatedCount} tasks in tag "${tag}".`);
+    }
+}
+
+// Delete a task from Notion
+async function deleteTaskFromNotion(task, tag, mapping, meta) {
+    const notionId = getNotionPageId(mapping, tag, task.id);
+    if (!notionId) return;
+    await notion.pages.update({ page_id: notionId, archived: true });
+    const newMapping = removeNotionPageId(mapping, tag, task.id);
+    saveNotionSyncMapping(newMapping, meta);
+}
+
+/**
+ * Ensures all tasks (tasksObj: tag -> {tasks: [...]}) have Notion mapping (Notion page exists for each task/subtask).
+ * Returns updated mapping.
+ * Can be used for prevTasks, curTasks 등 모든 태스크 객체에 사용 가능.
+ */
+async function ensureAllTasksHaveNotionMapping(tasksObj, mapping, meta, mappingFile, debug = false) {
+    for (const tag of Object.keys(tasksObj || {})) {
+        const tasksArr = Array.isArray(tasksObj[tag]?.tasks) ? tasksObj[tag].tasks : [];
+        for (const { id, task } of flattenTasksWithTag(tasksArr, tag)) {
+            if (!getNotionPageId(mapping, tag, id)) {
+                if (debug) console.log(`[SYNC] Creating missing Notion page for [${tag}] ${id}`);
+                try {
+                    await addTaskToNotion(task, tag, mapping, meta);
+                    // Reload mapping after add
+                    ({ mapping } = loadNotionSyncMapping(mappingFile));
+                } catch (e) {
+                    console.error(`[SYNC] Failed to create Notion page for [${tag}] ${id}:`, e.message);
+                }
+            }
+        }
+    }
+    return mapping;
+}
+
+/**
+ * Updates dependencies/subtasks relation properties for all tasks in tasksObj (tag -> {tasks: [...]}) in Notion.
+ * Only updates if dependencies or subtasks exist for the task.
+ * @param {Object} tasksObj
+ * @param {Object} mapping
+ * @param {Object} meta
+ * @param {string} mappingFile
+ * @param {boolean} debug
+ */
+async function updateAllTaskRelationsInNotion(tasksObj, mapping, meta, mappingFile, debug = false) {
+    for (const tag of Object.keys(tasksObj || {})) {
+        const tasksArr = Array.isArray(tasksObj[tag]?.tasks) ? tasksObj[tag].tasks : [];
+        for (const { id, task } of flattenTasksWithTag(tasksArr, tag)) {
+            // Only update if dependencies or subtasks exist and are non-empty
+            const hasDeps = Array.isArray(task.dependencies) && task.dependencies.length > 0;
+            const hasSubs = Array.isArray(task.subtasks) && task.subtasks.length > 0;
+            if (!hasDeps && !hasSubs) continue;
+            const notionId = getNotionPageId(mapping, tag, id);
+            if (!notionId) continue;
+            const relationProps = buildNotionRelationProperties(task, tag, mapping);
+            if (Object.keys(relationProps).length === 0) continue;
+            try {
+                await notion.pages.update({
+                    page_id: notionId,
+                    properties: relationProps
+                });
+                if (debug) console.log(`[SYNC] Updated relations for [${tag}] ${id}`);
+            } catch (e) {
+                console.error(`[SYNC] Failed to update relations for [${tag}] ${id}:`, e.message);
+            }
+        }
+    }
+}
+
+/**
+ * Updates dependencies/subtasks relation properties for only changed tasks (added, updated, moved) in Notion.
+ * @param {Array} changes - Array of diffTasks change objects
+ * @param {Object} mapping
+ * @param {Object} meta
+ * @param {string} mappingFile
+ * @param {boolean} debug
+ */
+async function updateChangedTaskRelationInNotion(changes, mapping, meta, mappingFile, debug = false) {
+    for (const change of changes) {
+        if (!['added', 'updated', 'moved'].includes(change.type)) continue;
+        let tag, id, task;
+        if (change.type === 'moved') {
+            tag = change.tag;
+            id = change.cur_id;
+            task = change.cur;
+        } else {
+            tag = change.tag;
+            id = change.id;
+            task = change.cur;
+        }
+        if (!task) continue;
+        const notionId = getNotionPageId(mapping, tag, id);
+        if (!notionId) continue;
+        const relationProps = buildNotionRelationProperties(task, tag, mapping);
+        if (Object.keys(relationProps).length === 0) continue;
+        try {
+            await notion.pages.update({
+                page_id: notionId,
+                properties: relationProps
+            });
+            if (debug) console.log(`[SYNC] Updated relations for [${tag}] ${id}`);
+        } catch (e) {
+            console.error(`[SYNC] Failed to update relations for [${tag}] ${id}:`, e.message);
+        }
+    }
+}
+
+/**
+ * Syncs tasks with Notion using diffTasks. Applies add, update, delete, move operations and updates the mapping file.
+ * @param {Object} prevTasks - Previous tasks object (tag -> {tasks: [...]})
+ * @param {Object} curTasks - Current tasks object (tag -> {tasks: [...]})
+ * @param {Object} [options] - { debug, meta, mappingFile }
+ */
+async function syncTasksWithNotion(prevTasks, curTasks, options = {}) {
+    const { debug = false, meta = {}, mappingFile = TASKMASTER_NOTION_SYNC_FILE } = options;
+    // Load mapping
+    let { mapping, meta: loadedMeta } = loadNotionSyncMapping(mappingFile);
+    if (Object.keys(meta).length === 0) Object.assign(meta, loadedMeta);
+
+    // --- Ensure all prevTasks have Notion mapping ---
+    const prevMapping = JSON.stringify(mapping);
+    mapping = await ensureAllTasksHaveNotionMapping(prevTasks, mapping, meta, mappingFile, debug);
+    // --- Only update relations if mapping changed (i.e., new pages were added) ---
+    if (JSON.stringify(mapping) !== prevMapping) {
+        await updateAllTaskRelationsInNotion(prevTasks, mapping, meta, mappingFile, debug);
+    }
+
+    // Diff
+    const changes = diffTasks(prevTasks, curTasks, { debug });
+    for (const change of changes) {
+        if (change.type === 'added') {
+            if (debug) console.log(`[SYNC] Adding task: [${change.tag}] ${change.id}`);
+            await addTaskToNotion(change.cur, change.tag, mapping, meta);
+            // mapping is updated inside addTaskToNotion
+            ({ mapping } = loadNotionSyncMapping(mappingFile));
+        } else if (change.type === 'updated') {
+            if (debug) console.log(`[SYNC] Updating task: [${change.tag}] ${change.id}`);
+            await updateTaskInNotion(change.cur, change.tag, mapping, meta);
+        } else if (change.type === 'deleted') {
+            if (debug) console.log(`[SYNC] Deleting task: [${change.tag}] ${change.id}`);
+            await deleteTaskFromNotion(change.prev, change.tag, mapping, meta);
+            ({ mapping } = loadNotionSyncMapping(mappingFile));
+        } else if (change.type === 'moved') {
+            if (debug) console.log(`[SYNC] Moving task: [${change.tag}] ${change.id} => ${change.cur_id}`);
+            const oldTag = change.prev_tag;
+            const oldId = change.id;
+            const newTag = change.tag;
+            const newId = change.cur_id;
+            const notionId = getNotionPageId(mapping, oldTag, oldId);
+            if (notionId) {
+                mapping = removeNotionPageId(mapping, oldTag, oldId);
+                mapping = setNotionPageId(mapping, newTag, newId, notionId);
+                saveNotionSyncMapping(mapping, meta, mappingFile);
+                await updateTaskInNotion(change.cur, newTag, mapping, meta);
+            } else {
+                await addTaskToNotion(change.cur, newTag, mapping, meta);
+                ({ mapping } = loadNotionSyncMapping(mappingFile));
+            }
+        }
+    }
+    // Update relations for changed tasks
+    await updateChangedTaskRelationInNotion(changes, mapping, meta, mappingFile, debug);
+
+    if (debug) console.log('[SYNC] Notion sync complete.');
+}
+
+export {
+    diffTasks,
+    syncTasksWithNotion,
+    addTaskToNotion,
+    updateTaskInNotion,
+    deleteTaskFromNotion,
+    loadNotionSyncMapping,
+    saveNotionSyncMapping,
+    getNotionPageId,
+    setNotionPageId,
+    removeNotionPageId,
+    updateNotionComplexityForCurrentTag,
+    ensureAllTasksHaveNotionMapping,
+    updateAllTaskRelationsInNotion,
+    updateChangedTaskRelationInNotion
+};

@@ -749,6 +749,21 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 			}
 		}
 
+		const previousData = readJSON(filepath, projectRoot);
+		(async () => {
+			try {
+				const { syncTasksWithNotion } = await import('./notion.js');
+				console.log('--- syncTasksWithNotion (debug=false) ---');
+				syncTasksWithNotion(
+					previousData._rawTaggedData,
+					cleanData,
+					{ debug: false }
+				);
+			} catch (e) {
+				console.warn('syncTasksWithNotion debug failed:', e);
+			}
+		})();
+
 		fs.writeFileSync(filepath, JSON.stringify(cleanData, null, 2), 'utf8');
 
 		if (isDebug) {
