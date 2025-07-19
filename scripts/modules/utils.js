@@ -749,20 +749,27 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 			}
 		}
 
-		const previousData = readJSON(filepath, projectRoot);
-		(async () => {
-			try {
-				const { syncTasksWithNotion } = await import('./notion.js');
-				console.log('--- syncTasksWithNotion (debug=false) ---');
-				syncTasksWithNotion(
-					previousData._rawTaggedData,
-					cleanData,
-					{ debug: false }
-				);
-			} catch (e) {
-				console.warn('syncTasksWithNotion debug failed:', e);
-			}
-		})();
+		// If we have a projectRoot, we can sync tasks with Notion
+		if (projectRoot !== null) {
+			const previousData = readJSON(filepath, projectRoot);
+			(async () => {
+				try {
+					const { syncTasksWithNotion } = await import('./notion.js');
+					syncTasksWithNotion(
+						previousData._rawTaggedData,
+						cleanData,
+						projectRoot,
+						{ debug: false }
+					);
+				} catch (e) {
+					console.warn('syncTasksWithNotion debug failed:', e);
+				}
+			})();
+		} else {
+			console.warn(
+				'writeJSON: No projectRoot provided, Notion sync will not be performed.'
+			);
+		}
 
 		fs.writeFileSync(filepath, JSON.stringify(cleanData, null, 2), 'utf8');
 

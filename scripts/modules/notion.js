@@ -62,8 +62,9 @@ function loadNotionEnv(envPath) {
  * @param {string} [file] - Optional path to the complexity report file (default: COMPLEXITY_REPORT_FILE)
  * @returns {Array<{id: number|string, complexityScore: number, title: string}>}
  */
-function getTaskComplexityInfo(file = COMPLEXITY_REPORT_FILE) {
+function getTaskComplexityInfo(projectRoot) {
     try {
+        const file = path.resolve(projectRoot, COMPLEXITY_REPORT_FILE); 
         if (!fs.existsSync(file)) {
             console.error(`[Notion] Complexity report file not found: ${file}`);
             return [];
@@ -354,10 +355,10 @@ function printTaskDiff(a, b, prev_tag, cur_tag) {
  * Loads the Notion sync mapping file. Returns { mapping, meta } object.
  * If file does not exist, returns empty mapping/meta.
  */
-function loadNotionSyncMapping(file = TASKMASTER_NOTION_SYNC_FILE) {
+function loadNotionSyncMapping(mappingFile) {
     try {
-        if (fs.existsSync(file)) {
-            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+        if (fs.existsSync(mappingFile)) {
+            const data = JSON.parse(fs.readFileSync(mappingFile, 'utf8'));
             return {
                 mapping: data.mapping || {},
                 meta: data.meta || {}
@@ -372,10 +373,10 @@ function loadNotionSyncMapping(file = TASKMASTER_NOTION_SYNC_FILE) {
 /**
  * Saves the Notion sync mapping file. mapping: {tag: {id: notionId}}, meta: object
  */
-function saveNotionSyncMapping(mapping, meta = {}, file = TASKMASTER_NOTION_SYNC_FILE) {
+function saveNotionSyncMapping(mapping, meta = {}, mappingFile) {
     try {
         const data = { mapping, meta };
-        fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+        fs.writeFileSync(mappingFile, JSON.stringify(data, null, 2), 'utf8');
     } catch (e) {
         console.error('Failed to save Notion sync mapping:', e);
     }
@@ -502,7 +503,7 @@ function buildDateProperties(task, now = new Date()) {
 }
 
 // Add a task to Notion
-async function addTaskToNotion(task, tag, mapping, meta) {
+async function addTaskToNotion(task, tag, mapping, meta, mappingFile) {
     const properties = buildNotionProperties(task, tag);
     const response = await notion.pages.create({
         parent: { database_id: NOTION_DATABASE_ID },
@@ -510,12 +511,12 @@ async function addTaskToNotion(task, tag, mapping, meta) {
     });
     const notionId = response.id;
     const newMapping = setNotionPageId(mapping, tag, task.id, notionId);
-    saveNotionSyncMapping(newMapping, meta);
+    saveNotionSyncMapping(newMapping, meta, mappingFile);
     return notionId;
 }
 
 // Update a task in Notion
-async function updateTaskInNotion(task, tag, mapping, meta) {
+async function updateTaskInNotion(task, tag, mapping, meta, mappingFile) {
     const notionId = getNotionPageId(mapping, tag, task.id);
     if (!notionId) throw new Error('Notion page id not found for update');
     const properties = buildNotionProperties(task, tag);
@@ -523,7 +524,7 @@ async function updateTaskInNotion(task, tag, mapping, meta) {
         page_id: notionId,
         properties
     });
-    saveNotionSyncMapping(mapping, meta);
+    saveNotionSyncMapping(mapping, meta, mappingFile);
 }
 
 /**
@@ -533,18 +534,20 @@ async function updateTaskInNotion(task, tag, mapping, meta) {
  */
 async function updateNotionComplexityForCurrentTag(projectRoot, debug = false) {
     const tag = getCurrentTag(projectRoot);
-    const data = readJSON(TASKMASTER_TASKS_FILE, projectRoot, tag);
+    const mappingFile = path.resolve(projectRoot, TASKMASTER_NOTION_SYNC_FILE);
+    const taskmasterTasksFile = path.join(projectRoot, TASKMASTER_TASKS_FILE);
+    const data = readJSON(taskmasterTasksFile, projectRoot, tag);
     const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
-    const complexityInfo = getTaskComplexityInfo();
+    const complexityInfo = getTaskComplexityInfo(projectRoot);
     // Load mapping
-    let { mapping, meta } = loadNotionSyncMapping();
+    let { mapping, meta } = loadNotionSyncMapping(mappingFile);
 
     // --- Ensure all tasks have Notion mapping ---
     const prevMapping = JSON.stringify(mapping);
-    mapping = await ensureAllTasksHaveNotionMapping(data._rawTaggedData, mapping, meta, TASKMASTER_NOTION_SYNC_FILE, debug);
+    mapping = await ensureAllTasksHaveNotionMapping(data._rawTaggedData, mapping, meta, mappingFile, debug);
     // --- Only update relations if mapping changed (i.e., new pages were added) ---
     if (JSON.stringify(mapping) !== prevMapping) {
-        await updateAllTaskRelationsInNotion(data._rawTaggedData, mapping, meta, TASKMASTER_NOTION_SYNC_FILE, debug);
+        await updateAllTaskRelationsInNotion(data._rawTaggedData, mapping, debug);
     }
 
     let updatedCount = 0;
@@ -557,7 +560,7 @@ async function updateNotionComplexityForCurrentTag(projectRoot, debug = false) {
             if (task.complexity !== match.complexityScore) {
                 // Update Notion for parent
                 try {
-                    await updateTaskInNotion({ ...task, complexity: match.complexityScore }, tag, mapping, meta);
+                    await updateTaskInNotion({ ...task, complexity: match.complexityScore }, tag, mapping, meta, mappingFile);
                     updatedCount++;
                 } catch (e) {
                     console.error(`Failed to update Notion complexity for task id=${task.id}, title="${task.title}":`, e.message);
@@ -572,7 +575,7 @@ async function updateNotionComplexityForCurrentTag(projectRoot, debug = false) {
                         if (subtaskNotionId) {
                             try {
                                 // The original subtask info is not in the tasks array, so only pass the id to update complexity
-                                await updateTaskInNotion({ id: subId, complexity: match.complexityScore }, tag, mapping, meta);
+                                await updateTaskInNotion({ id: subId, complexity: match.complexityScore }, tag, mapping, meta, mappingFile);
                                 updatedCount++;
                             } catch (e) {
                                 console.error(`Failed to update Notion complexity for subtask id=${subId} (parent id=${task.id}):`, e.message);
@@ -589,12 +592,12 @@ async function updateNotionComplexityForCurrentTag(projectRoot, debug = false) {
 }
 
 // Delete a task from Notion
-async function deleteTaskFromNotion(task, tag, mapping, meta) {
+async function deleteTaskFromNotion(task, tag, mapping, meta, mappingFile) {
     const notionId = getNotionPageId(mapping, tag, task.id);
     if (!notionId) return;
     await notion.pages.update({ page_id: notionId, archived: true });
     const newMapping = removeNotionPageId(mapping, tag, task.id);
-    saveNotionSyncMapping(newMapping, meta);
+    saveNotionSyncMapping(newMapping, meta, mappingFile);
 }
 
 /**
@@ -609,7 +612,7 @@ async function ensureAllTasksHaveNotionMapping(tasksObj, mapping, meta, mappingF
             if (!getNotionPageId(mapping, tag, id)) {
                 if (debug) console.log(`[SYNC] Creating missing Notion page for [${tag}] ${id}`);
                 try {
-                    await addTaskToNotion(task, tag, mapping, meta);
+                    await addTaskToNotion(task, tag, mapping, meta, mappingFile);
                     // Reload mapping after add
                     ({ mapping } = loadNotionSyncMapping(mappingFile));
                 } catch (e) {
@@ -630,7 +633,7 @@ async function ensureAllTasksHaveNotionMapping(tasksObj, mapping, meta, mappingF
  * @param {string} mappingFile
  * @param {boolean} debug
  */
-async function updateAllTaskRelationsInNotion(tasksObj, mapping, meta, mappingFile, debug = false) {
+async function updateAllTaskRelationsInNotion(tasksObj, mapping, debug = false) {
     for (const tag of Object.keys(tasksObj || {})) {
         const tasksArr = Array.isArray(tasksObj[tag]?.tasks) ? tasksObj[tag].tasks : [];
         for (const { id, task } of flattenTasksWithTag(tasksArr, tag)) {
@@ -663,7 +666,7 @@ async function updateAllTaskRelationsInNotion(tasksObj, mapping, meta, mappingFi
  * @param {string} mappingFile
  * @param {boolean} debug
  */
-async function updateChangedTaskRelationInNotion(changes, mapping, meta, mappingFile, debug = false) {
+async function updateChangedTaskRelationsInNotion(changes, mapping, debug = false) {
     for (const change of changes) {
         if (!['added', 'updated', 'moved'].includes(change.type)) continue;
         let tag, id, task;
@@ -699,8 +702,9 @@ async function updateChangedTaskRelationInNotion(changes, mapping, meta, mapping
  * @param {Object} curTasks - Current tasks object (tag -> {tasks: [...]})
  * @param {Object} [options] - { debug, meta, mappingFile }
  */
-async function syncTasksWithNotion(prevTasks, curTasks, options = {}) {
-    const { debug = false, meta = {}, mappingFile = TASKMASTER_NOTION_SYNC_FILE } = options;
+async function syncTasksWithNotion(prevTasks, curTasks, projectRoot, options = {}) {
+    const { debug = false, meta = {} } = options;
+    const mappingFile = path.resolve(projectRoot, TASKMASTER_NOTION_SYNC_FILE)
     // Load mapping
     let { mapping, meta: loadedMeta } = loadNotionSyncMapping(mappingFile);
     if (Object.keys(meta).length === 0) Object.assign(meta, loadedMeta);
@@ -710,7 +714,7 @@ async function syncTasksWithNotion(prevTasks, curTasks, options = {}) {
     mapping = await ensureAllTasksHaveNotionMapping(prevTasks, mapping, meta, mappingFile, debug);
     // --- Only update relations if mapping changed (i.e., new pages were added) ---
     if (JSON.stringify(mapping) !== prevMapping) {
-        await updateAllTaskRelationsInNotion(prevTasks, mapping, meta, mappingFile, debug);
+        await updateAllTaskRelationsInNotion(prevTasks, mapping, debug);
     }
 
     // Diff
@@ -718,15 +722,15 @@ async function syncTasksWithNotion(prevTasks, curTasks, options = {}) {
     for (const change of changes) {
         if (change.type === 'added') {
             if (debug) console.log(`[SYNC] Adding task: [${change.tag}] ${change.id}`);
-            await addTaskToNotion(change.cur, change.tag, mapping, meta);
+            await addTaskToNotion(change.cur, change.tag, mapping, meta, mappingFile);
             // mapping is updated inside addTaskToNotion
             ({ mapping } = loadNotionSyncMapping(mappingFile));
         } else if (change.type === 'updated') {
             if (debug) console.log(`[SYNC] Updating task: [${change.tag}] ${change.id}`);
-            await updateTaskInNotion(change.cur, change.tag, mapping, meta);
+            await updateTaskInNotion(change.cur, change.tag, mapping, meta, mappingFile);
         } else if (change.type === 'deleted') {
             if (debug) console.log(`[SYNC] Deleting task: [${change.tag}] ${change.id}`);
-            await deleteTaskFromNotion(change.prev, change.tag, mapping, meta);
+            await deleteTaskFromNotion(change.prev, change.tag, mapping, meta, mappingFile);
             ({ mapping } = loadNotionSyncMapping(mappingFile));
         } else if (change.type === 'moved') {
             if (debug) console.log(`[SYNC] Moving task: [${change.tag}] ${change.id} => ${change.cur_id}`);
@@ -739,32 +743,20 @@ async function syncTasksWithNotion(prevTasks, curTasks, options = {}) {
                 mapping = removeNotionPageId(mapping, oldTag, oldId);
                 mapping = setNotionPageId(mapping, newTag, newId, notionId);
                 saveNotionSyncMapping(mapping, meta, mappingFile);
-                await updateTaskInNotion(change.cur, newTag, mapping, meta);
+                await updateTaskInNotion(change.cur, newTag, mapping, meta, mappingFile);
             } else {
-                await addTaskToNotion(change.cur, newTag, mapping, meta);
+                await addTaskToNotion(change.cur, newTag, mapping, meta, mappingFile);
                 ({ mapping } = loadNotionSyncMapping(mappingFile));
             }
         }
     }
     // Update relations for changed tasks
-    await updateChangedTaskRelationInNotion(changes, mapping, meta, mappingFile, debug);
+    await updateChangedTaskRelationsInNotion(changes, mapping, debug);
 
     if (debug) console.log('[SYNC] Notion sync complete.');
 }
 
 export {
-    diffTasks,
     syncTasksWithNotion,
-    addTaskToNotion,
-    updateTaskInNotion,
-    deleteTaskFromNotion,
-    loadNotionSyncMapping,
-    saveNotionSyncMapping,
-    getNotionPageId,
-    setNotionPageId,
-    removeNotionPageId,
-    updateNotionComplexityForCurrentTag,
-    ensureAllTasksHaveNotionMapping,
-    updateAllTaskRelationsInNotion,
-    updateChangedTaskRelationInNotion
+    updateNotionComplexityForCurrentTag
 };

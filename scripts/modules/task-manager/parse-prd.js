@@ -312,11 +312,11 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		(async () => {
 			try {
 				const { syncTasksWithNotion } = await import('../notion.js');
-				console.log('--- syncTasksWithNotion (debug=false) ---');
 				syncTasksWithNotion(
 					{},
 					outputData,
-					{ debug: true }
+					projectRoot,
+					{ debug: false }
 				);
 			} catch (e) {
 				console.warn('syncTasksWithNotion debug failed:', e);
