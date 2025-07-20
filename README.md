@@ -1,295 +1,95 @@
-# Task Master [![GitHub stars](https://img.shields.io/github/stars/eyaltoledano/claude-task-master?style=social)](https://github.com/eyaltoledano/claude-task-master/stargazers)
 
-[![CI](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml/badge.svg)](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml) [![npm version](https://badge.fury.io/js/task-master-ai.svg)](https://badge.fury.io/js/task-master-ai) [![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat)](https://discord.gg/taskmasterai) [![License: MIT with Commons Clause](https://img.shields.io/badge/license-MIT%20with%20Commons%20Clause-blue.svg)](LICENSE)
+# Task Master - Notion Sync
 
-[![NPM Downloads](https://img.shields.io/npm/d18m/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dm/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dw/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai)
+This project is a fork of [eyaltoledano/claude-task-master](https://github.com/eyaltoledano/claude-task-master).
+It extends the local task management features of Task Master by synchronizing your tasks to Notion, allowing you to leverage Notion's powerful database tools for visualization and management.
 
-## By [@eyaltoledano](https://x.com/eyaltoledano), [@RalphEcom](https://x.com/RalphEcom) & [@jasonzhou1993](https://x.com/jasonzhou1993)
+![Notion Kanban Screenshot](screenshot/notion2.png)
+![Notion Task Page Screenshot](screenshot/notion1.png)
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano)](https://x.com/eyaltoledano)
-[![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom)](https://x.com/RalphEcom)
-[![Twitter Follow](https://img.shields.io/twitter/follow/jasonzhou1993)](https://x.com/jasonzhou1993)
+## Features
 
-A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
+- Dump all Task Master tasks into a Notion database.
+- Use Notion's Kanban board, timeline, calendar, and other views for your tasks.
+- Add rich notes and details to each task page in Notion for enhanced productivity.
 
-## Documentation
+## Usage
 
-📚 **[View Full Documentation](https://docs.task-master.dev)**
+For basic installation and setup, refer to the [original documentation](https://github.com/eyaltoledano/claude-task-master?tab=readme-ov-file#documentation).
 
-For detailed guides, API references, and comprehensive examples, visit our documentation site.
+### Additional Setup for Notion Sync
 
-### Quick Reference
+#### 1. Installation
 
-The following documentation is also available in the `docs` directory:
+**Local installation:**
+1. Clone the repo:
+   ```sh
+   git clone https://github.com/chun92/claude-task-master
+   ```
+2. Install dependencies:
+   ```sh
+   npm install --save-dev shx
+   npm link
+   ```
+   **Note:** This will override any existing task-master installation.
+3. After running `task-master init`, set the following in your `.env` file:
+   ```env
+   NOTION_TOKEN=secret_xxx
+   NOTION_DATABASE_ID=...
+   ```
 
-- [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
-- [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master
-- [Command Reference](docs/command-reference.md) - Complete list of all available commands
-- [Task Structure](docs/task-structure.md) - Understanding the task format and features
-- [Example Interactions](docs/examples.md) - Common Cursor AI interaction examples
-- [Migration Guide](docs/migration-guide.md) - Guide to migrating to the new project structure
+**npm installation:**
+* (Not yet available; installation address will be updated soon.)
 
-#### Quick Install for Cursor 1.0+ (One-Click)
+#### 2. Notion Setup
 
-[![Add task-master-ai MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=task-master-ai&config=eyJjb21tYW5kIjoibnB4IC15IC0tcGFja2FnZT10YXNrLW1hc3Rlci1haSB0YXNrLW1hc3Rlci1haSIsImVudiI6eyJBTlRIUk9QSUNfQVBJX0tFWSI6IllPVVJfQU5USFJPUElDX0FQSV9LRVlfSEVSRSIsIlBFUlBMRVhJVFlfQVBJX0tFWSI6IllPVVJfUEVSUExFWElUWV9BUElfS0VZX0hFUkUiLCJPUEVOQUlfQVBJX0tFWSI6IllPVVJfT1BFTkFJX0tFWV9IRVJFIiwiR09PR0xFX0FQSV9LRVkiOiJZT1VSX0dPT0dMRV9LRVlfSEVSRSIsIk1JU1RSQUxfQVBJX0tFWSI6IllPVVJfTUlTVFJBTF9LRVlfSEVSRSIsIkdST1FfQVBJX0tFWSI6IllPVVJfR1JPUV9LRVlfSEVSRSIsIk9QRU5ST1VURVJfQVBJX0tFWSI6IllPVVJfT1BFTlJPVVRFUl9LRVlfSEVSRSIsIlhBSV9BUElfS0VZIjoiWU9VUl9YQUlfS0VZX0hFUkUiLCJBWlVSRV9PUEVOQUlfQVBJX0tFWSI6IllPVVJfQVpVUkVfS0VZX0hFUkUiLCJPTExBTUFfQVBJX0tFWSI6IllPVVJfT0xMQU1BX0FQSV9LRVlfSEVSRSJ9fQ%3D%3D)
+1. Create a Notion Integration at [Notion Integrations](https://www.notion.so/profile/integrations).
+   - Set content capabilities: **Read content**, **Update content**, **Insert content**.
+   - Use the Internal Integration Secret as your `NOTION_TOKEN`.
+2. Import the Notion template from the Marketplace to your workspace: [Claude Task Master Notion Template](https://www.notion.com/ko/templates/claude-task-master).
+   - On the imported page, set the Integration's Connections ([see guide](https://www.notion.com/help/add-and-manage-connections-with-the-api)).
+   - Set the inline database's ID as `NOTION_DATABASE_ID`.
+     - The database ID can be found in the Notion page URL (e.g., `https://www.notion.so/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`, use the part before any query string).
+     - **Important:** Use the database ID, not the page ID.
 
-> **Note:** After clicking the link, you'll still need to add your API keys to the configuration. The link installs the MCP server with placeholder keys that you'll need to replace with your actual API keys.
+![Notion Usage Example](screenshot/notion_usage.png)
 
-## Requirements
+#### 3. Updating for Existing Task Master Users
 
-Taskmaster utilizes AI across several commands, and those require a separate API key. You can use a variety of models from different AI providers provided you add your API keys. For example, if you want to use Claude 3.7, you'll need an Anthropic API key.
+If you have a `tasks.json` from version 0.20.0 or later, you can use it directly. (Migration from older versions is not guaranteed.)
+All updates to tasks in your project will be processed in bulk.
 
-You can define 3 types of models to be used: the main model, the research model, and the fallback model (in case either the main or research fail). Whatever model you use, its provider API key must be present in either mcp.json or .env.
 
-At least one (1) of the following is required:
+## 4. Notion Sync
 
-- Anthropic API key (Claude API)
-- OpenAI API key
-- Google Gemini API key
-- Perplexity API key (for research model)
-- xAI API Key (for research or main model)
-- OpenRouter API Key (for research or main model)
-- Claude Code (no API key required - requires Claude Code CLI)
+After completing all setup, when you run Task Master commands such as `parse-prd`, `update`, `analyze-complexity`, or `set-status` to update the state of your tasks, those tasks will be automatically synced to Notion.
 
-Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code). Adding all API keys enables you to seamlessly switch between model providers at will.
+## Cautions
 
-## Quick Start
+- It is recommended to use this tool from the console.
+- MCP mode is supported, but some issues may occur during testing.
+- Installing this repo will override your existing task-master installation. **Backup your `tasks.json` before use.** The author is not responsible for lost data.
+- As of v0.20.0:
+  - MCP may create duplicate tasks or use legacy formats unpredictably in multi-tag environments.
+  - If using MCP, avoid using tag features. Promoting subtasks to tasks may cause dependency issues.
+- If you need to update a large amount of data to Notion, be aware that Notion API rate limits and bulk update reliability have not been fully tested. Failures may occur in such cases.
 
-### Option 1: MCP (Recommended)
+## Version Support
 
-MCP (Model Control Protocol) lets you run Task Master directly from your editor.
+| Original Version | Notion Sync Support |
+|------------------|--------------------|
+| v0.20.0          | Supported          |
+| Earlier versions | Not supported      |
 
-#### 1. Add your MCP config at the following path depending on your editor
+This fork will continue to track and update for versions after v0.20.0.
 
-| Editor       | Scope   | Linux/macOS Path                      | Windows Path                                      | Key          |
-| ------------ | ------- | ------------------------------------- | ------------------------------------------------- | ------------ |
-| **Cursor**   | Global  | `~/.cursor/mcp.json`                  | `%USERPROFILE%\.cursor\mcp.json`                  | `mcpServers` |
-|              | Project | `<project_folder>/.cursor/mcp.json`   | `<project_folder>\.cursor\mcp.json`               | `mcpServers` |
-| **Windsurf** | Global  | `~/.codeium/windsurf/mcp_config.json` | `%USERPROFILE%\.codeium\windsurf\mcp_config.json` | `mcpServers` |
-| **VS Code**  | Project | `<project_folder>/.vscode/mcp.json`   | `<project_folder>\.vscode\mcp.json`               | `servers`    |
+## License
 
-##### Manual Configuration
+Task Master is licensed under the MIT License with Commons Clause. See the [LICENSE](LICENSE) file for details.
 
-###### Cursor & Windsurf (`mcpServers`)
+## Original Authors & Contributors
 
-```json
-{
-  "mcpServers": {
-    "task-master-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-        "GROQ_API_KEY": "YOUR_GROQ_KEY_HERE",
-        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
-      }
-    }
-  }
-}
-```
-
-> 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
-
-> **Note**: If you see `0 tools enabled` in the MCP settings, try removing the `--package=task-master-ai` flag from `args`.
-
-###### VS Code (`servers` + `type`)
-
-```json
-{
-  "servers": {
-    "task-master-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-        "GROQ_API_KEY": "YOUR_GROQ_KEY_HERE",
-        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
-      },
-      "type": "stdio"
-    }
-  }
-}
-```
-
-> 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
-
-#### 2. (Cursor-only) Enable Taskmaster MCP
-
-Open Cursor Settings (Ctrl+Shift+J) ➡ Click on MCP tab on the left ➡ Enable task-master-ai with the toggle
-
-#### 3. (Optional) Configure the models you want to use
-
-In your editor's AI chat pane, say:
-
-```txt
-Change the main, research and fallback models to <model_name>, <model_name> and <model_name> respectively.
-```
-
-For example, to use Claude Code (no API key required):
-```txt
-Change the main model to claude-code/sonnet
-```
-
-[Table of available models](docs/models.md) | [Claude Code setup](docs/examples/claude-code-usage.md)
-
-#### 4. Initialize Task Master
-
-In your editor's AI chat pane, say:
-
-```txt
-Initialize taskmaster-ai in my project
-```
-
-#### 5. Make sure you have a PRD (Recommended)
-
-For **new projects**: Create your PRD at `.taskmaster/docs/prd.txt`  
-For **existing projects**: You can use `scripts/prd.txt` or migrate with `task-master migrate`
-
-An example PRD template is available after initialization in `.taskmaster/templates/example_prd.txt`.
-
-> [!NOTE]
-> While a PRD is recommended for complex projects, you can always create individual tasks by asking "Can you help me implement [description of what you want to do]?" in chat.
-
-**Always start with a detailed PRD.**
-
-The more detailed your PRD, the better the generated tasks will be.
-
-#### 6. Common Commands
-
-Use your AI assistant to:
-
-- Parse requirements: `Can you parse my PRD at scripts/prd.txt?`
-- Plan next step: `What's the next task I should work on?`
-- Implement a task: `Can you help me implement task 3?`
-- View multiple tasks: `Can you show me tasks 1, 3, and 5?`
-- Expand a task: `Can you help me expand task 4?`
-- **Research fresh information**: `Research the latest best practices for implementing JWT authentication with Node.js`
-- **Research with context**: `Research React Query v5 migration strategies for our current API implementation in src/api.js`
-
-[More examples on how to use Task Master in chat](docs/examples.md)
-
-### Option 2: Using Command Line
-
-#### Installation
-
-```bash
-# Install globally
-npm install -g task-master-ai
-
-# OR install locally within your project
-npm install task-master-ai
-```
-
-#### Initialize a new project
-
-```bash
-# If installed globally
-task-master init
-
-# If installed locally
-npx task-master init
-
-# Initialize project with specific rules
-task-master init --rules cursor,windsurf,vscode
-```
-
-This will prompt you for project details and set up a new project with the necessary files and structure.
-
-#### Common Commands
-
-```bash
-# Initialize a new project
-task-master init
-
-# Parse a PRD and generate tasks
-task-master parse-prd your-prd.txt
-
-# List all tasks
-task-master list
-
-# Show the next task to work on
-task-master next
-
-# Show specific task(s) - supports comma-separated IDs
-task-master show 1,3,5
-
-# Research fresh information with project context
-task-master research "What are the latest best practices for JWT authentication?"
-
-# Generate task files
-task-master generate
-
-# Add rules after initialization
-task-master rules add windsurf,roo,vscode
-```
-
-## Claude Code Support
-
-Task Master now supports Claude models through the Claude Code CLI, which requires no API key:
-
-- **Models**: `claude-code/opus` and `claude-code/sonnet`
-- **Requirements**: Claude Code CLI installed
-- **Benefits**: No API key needed, uses your local Claude instance
-
-[Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
-
-## Troubleshooting
-
-### If `task-master init` doesn't respond
-
-Try running it with Node directly:
-
-```bash
-node node_modules/claude-task-master/scripts/init.js
-```
-
-Or clone the repository and run:
-
-```bash
-git clone https://github.com/eyaltoledano/claude-task-master.git
-cd claude-task-master
-node scripts/init.js
-```
-
-## Contributors
-
-<a href="https://github.com/eyaltoledano/claude-task-master/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=eyaltoledano/claude-task-master" alt="Task Master project contributors" />
-</a>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=eyaltoledano/claude-task-master&type=Timeline)](https://www.star-history.com/#eyaltoledano/claude-task-master&Timeline)
-
-## Licensing
-
-Task Master is licensed under the MIT License with Commons Clause. This means you can:
-
-✅ **Allowed**:
-
-- Use Task Master for any purpose (personal, commercial, academic)
-- Modify the code
-- Distribute copies
-- Create and sell products built using Task Master
-
-❌ **Not Allowed**:
-
-- Sell Task Master itself
-- Offer Task Master as a hosted service
-- Create competing products based on Task Master
-
-See the [LICENSE](LICENSE) file for the complete license text and [licensing details](docs/licensing.md) for more information.
+- [@eyaltoledano](https://x.com/eyaltoledano)
+- [@RalphEcom](https://x.com/RalphEcom)
+- [@jasonzhou1993](https://x.com/jasonzhou1993)
+- See [contributors](https://github.com/eyaltoledano/claude-task-master/graphs/contributors)
