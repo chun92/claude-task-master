@@ -21,6 +21,28 @@ For basic installation and setup, refer to the [original documentation](https://
 
 #### 1. Installation
 
+**npm installation:**
+1. Install globally:
+   ```sh
+   npm install -g task-master-ai-notion
+   ```
+2. Or install locally in your project:
+   ```sh
+   npm install task-master-ai-notion
+   ```
+3. After installation, use the command:
+   ```sh
+   task-master-notion init
+   ```
+4. After running `task-master-notion init` in your project, set the following in your `.env` file:
+   ```env
+   NOTION_TOKEN=...
+   NOTION_DATABASE_ID=...
+   ```
+   For details on how to obtain and set these values, see [2. Notion Setup](#2-notion-setup) below.
+**Note:** This installation provides the `task-master-notion` command, which can be used alongside the original `task-master` without conflict.
+
+
 **Local installation:**
 1. Clone the repo:
    ```sh
@@ -28,18 +50,42 @@ For basic installation and setup, refer to the [original documentation](https://
    ```
 2. Install dependencies:
    ```sh
-   npm install --save-dev shx
+   npm install
+   # Run the following only if you want to use the command globally:
    npm link
    ```
-   **Note:** This will override any existing task-master installation.
-3. After running `task-master init`, set the following in your `.env` file:
-   ```env
-   NOTION_TOKEN=secret_xxx
-   NOTION_DATABASE_ID=...
-   ```
 
-**npm installation:**
-* (Not yet available; installation address will be updated soon.)
+#### MCP Setup Example
+
+
+The following is an example MCP configuration for **VS Code** (add to `.vscode/mcp.json`).
+**Important:** You must add both `NOTION_TOKEN` and `NOTION_DATABASE_ID` to your MCP config for Notion sync to work. For details on how to obtain and set these values, see [2. Notion Setup](#2-notion-setup) below.
+For more detailed MCP setup instructions, please refer to the [original documentation](https://github.com/eyaltoledano/claude-task-master?tab=readme-ov-file#option-1-mcp-recommended).
+
+
+```json
+{
+  "servers": {
+    "taskmaster-ai-notion": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai-notion", "task-master-ai-notion"],
+      "env": {
+        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "NOTION_TOKEN=": "...",
+        "NOTION_DATABASE_ID": "..."
+      },
+      "type": "stdio"
+    }
+  }
+}
+```
 
 #### 2. Notion Setup
 
@@ -68,8 +114,8 @@ After completing all setup, when you run Task Master commands such as `parse-prd
 
 - It is recommended to use this tool from the console.
 - MCP mode is supported, but some issues may occur during testing.
-- Installing this repo will override your existing task-master installation. **Backup your `tasks.json` before use.** The author is not responsible for lost data.
-- As of v0.20.0:
+- `task-master-notion` shares the same `tasks.json` file as the original `task-master` and can be used together, but for stability, it is recommended to use only one tool at a time. If you use your existing `tasks.json` from `task-master` with `task-master-notion`, it is strongly recommended to make a backup just in case. The author is not responsible for any loss or corruption of your original file.
+ As of v0.20.0:
   - MCP may create duplicate tasks or use legacy formats unpredictably in multi-tag environments.
   - If using MCP, avoid using tag features. Promoting subtasks to tasks may cause dependency issues.
 - If you need to update a large amount of data to Notion, be aware that Notion API rate limits and bulk update reliability have not been fully tested. Failures may occur in such cases.

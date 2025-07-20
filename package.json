@@ -1,13 +1,13 @@
 {
-	"name": "task-master-ai",
+	"name": "task-master-ai-notion",
 	"version": "0.22.0",
-	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
+	"description": "Sync your local Task Master tasks to Notion, enabling powerful Kanban, timeline, and calendar views. Fork of claude-task-master with Notion integration.",
 	"main": "index.js",
 	"type": "module",
 	"bin": {
-		"task-master": "bin/task-master.js",
-		"task-master-mcp": "mcp-server/server.js",
-		"task-master-ai": "mcp-server/server.js"
+		"task-master-notion": "bin/task-master.js",
+		"task-master-notion-mcp": "mcp-server/server.js",
+		"task-master-notion-ai": "mcp-server/server.js"
 	},
 	"workspaces": ["apps/*", "."],
 	"scripts": {
@@ -35,9 +35,11 @@
 		"anthropic",
 		"llm",
 		"mcp",
-		"context"
+		"context",
+		"notion",
+		"notion-integration"
 	],
-	"author": "Eyal Toledano",
+	"author": "chun92",
 	"license": "MIT WITH Commons-Clause",
 	"dependencies": {
 		"@ai-sdk/amazon-bedrock": "^2.2.9",
@@ -93,11 +95,11 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/eyaltoledano/claude-task-master.git"
+		"url": "git+https://github.com/chun92/claude-task-master.git"
 	},
-	"homepage": "https://github.com/eyaltoledano/claude-task-master#readme",
+	"homepage": "https://github.com/chun92/claude-task-master#readme",
 	"bugs": {
-		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
+		"url": "https://github.com/chun92/claude-task-master/issues"
 	},
 	"files": [
 		"scripts/**",
