@@ -5,9 +5,44 @@ import { Client } from '@notionhq/client';
 import { COMPLEXITY_REPORT_FILE, TASKMASTER_TASKS_FILE } from '../../src/constants/paths.js';
 import { getCurrentTag, readJSON } from './utils.js';
 
-// Usage: load env and create Notion client
-const { NOTION_TOKEN, NOTION_DATABASE_ID } = loadNotionEnv();
-const notion = new Client({ auth: NOTION_TOKEN });
+
+// --- Notion config validation ---
+let NOTION_TOKEN, NOTION_DATABASE_ID, notion, isNotionEnabled = false, notionConfigError = '';
+
+async function validateNotionConfig(env) {
+    if (!env.NOTION_TOKEN) {
+        notionConfigError = '[Notion] NOTION_TOKEN is missing.';
+        return false;
+    }
+    if (!env.NOTION_DATABASE_ID) {
+        notionConfigError = '[Notion] NOTION_DATABASE_ID is missing.';
+        return false;
+    }
+    try {
+        const testNotion = new Client({ auth: env.NOTION_TOKEN });
+        // 실제 API 호출로 토큰/DB ID 검증
+        await testNotion.databases.retrieve({ database_id: env.NOTION_DATABASE_ID });
+        return true;
+    } catch (e) {
+        notionConfigError = `[Notion] Config validation failed: ${e.message}`;
+        return false;
+    }
+}
+
+let notionInitPromise = null;
+function initNotion() {
+  if (!notionInitPromise) {
+    notionInitPromise = (async () => {
+      const env = loadNotionEnv();
+      NOTION_TOKEN = env.NOTION_TOKEN;
+      NOTION_DATABASE_ID = env.NOTION_DATABASE_ID;
+      isNotionEnabled = await validateNotionConfig(env);
+      notion = isNotionEnabled ? new Client({ auth: NOTION_TOKEN }) : null;
+      if (!isNotionEnabled) console.error(notionConfigError);
+    })();
+  }
+  return notionInitPromise;
+}
 
 const TASKMASTER_NOTION_SYNC_FILE = '.taskmaster/notion-sync.json';
 
@@ -554,6 +589,11 @@ async function updateTaskInNotion(task, tag, mapping, meta, mappingFile) {
  * @param {boolean} [debug=false] - If true, prints update log to console
  */
 async function updateNotionComplexityForCurrentTag(projectRoot, debug = false) {
+    await initNotion();
+    if (!isNotionEnabled || !notion) {
+        console.error('[Notion] Notion sync is disabled. Skipping syncTasksWithNotion.');
+        return;
+    }
     const tag = getCurrentTag(projectRoot);
     const mappingFile = path.resolve(projectRoot, TASKMASTER_NOTION_SYNC_FILE);
     const taskmasterTasksFile = path.join(projectRoot, TASKMASTER_TASKS_FILE);
@@ -724,6 +764,11 @@ async function updateChangedTaskRelationsInNotion(changes, mapping, debug = fals
  * @param {Object} [options] - { debug, meta, mappingFile }
  */
 async function syncTasksWithNotion(prevTasks, curTasks, projectRoot, options = {}) {
+    await initNotion();
+    if (!isNotionEnabled || !notion) {
+        console.error('[Notion] Notion sync is disabled. Skipping syncTasksWithNotion.');
+        return;
+    }
     const { debug = false, meta = {} } = options;
     const mappingFile = path.resolve(projectRoot, TASKMASTER_NOTION_SYNC_FILE)
     // Load mapping
