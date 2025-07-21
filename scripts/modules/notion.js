@@ -413,6 +413,27 @@ function removeNotionPageId(mapping, tag, id) {
     return newMapping;
 }
 
+// Helper: Split long text into 2000-char chunks, word-wrap aware
+function splitRichTextByWord(content, chunkSize = 2000) {
+    if (!content) return [];
+    const result = [];
+    let start = 0;
+    while (start < content.length) {
+        let end = Math.min(start + chunkSize, content.length);
+        if (end < content.length) {
+            // Find last space within chunk
+            const lastSpace = content.lastIndexOf(' ', end);
+            if (lastSpace > start + chunkSize * 0.7) {
+                end = lastSpace;
+            }
+        }
+        result.push({ text: { content: content.slice(start, end) } });
+        start = end;
+        if (content[start] === ' ') start++;
+    }
+    return result;
+}
+
 // --- Notion-related API functions start here ---
 // Notion property mapping function
 function buildNotionProperties(task, tag, now = new Date()) {
@@ -420,12 +441,12 @@ function buildNotionProperties(task, tag, now = new Date()) {
     const dateProps = buildDateProperties(task, now);
 
     return {
-        title: { title: [{ text: { content: task.title || '' } }] },
-        description: { rich_text: [{ text: { content: task.description || '' } }] },
-        details: { rich_text: [{ text: { content: task.details || '' } }] },
-        testStrategy: { rich_text: [{ text: { content: task.testStrategy || '' } }] },
-        taskid: { rich_text: [{ text: { content: String(task.id) } }] },
-        tag: { rich_text: [{ text: { content: tag } }] },
+        title: { title: splitRichTextByWord(task.title || '') },
+        description: { rich_text: splitRichTextByWord(task.description || '') },
+        details: { rich_text: splitRichTextByWord(task.details || '') },
+        testStrategy: { rich_text: splitRichTextByWord(task.testStrategy || '') },
+        taskid: { rich_text: splitRichTextByWord(String(task.id)) },
+        tag: { rich_text: splitRichTextByWord(tag) },
         priority: task.priority ? { select: { name: task.priority } } : undefined,
         status: task.status ? { status: { name: task.status } } : undefined,
         complexity: task.complexity !== undefined ? { number: task.complexity } : undefined,
