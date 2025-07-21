@@ -4,8 +4,8 @@
 This project is a fork of [eyaltoledano/claude-task-master](https://github.com/eyaltoledano/claude-task-master).
 It extends the local task management features of Task Master by synchronizing your tasks to Notion, allowing you to leverage Notion's powerful database tools for visualization and management.
 
-![Notion Kanban Screenshot](screenshot/notion2.png)
-![Notion Task Page Screenshot](screenshot/notion1.png)
+![Notion Kanban Screenshot](https://raw.githubusercontent.com/chun92/claude-task-master/main/screenshot/notion2.png)
+![Notion Task Page Screenshot](https://raw.githubusercontent.com/chun92/claude-task-master/main/screenshot/notion1.png)
 
 ## Features
 
@@ -98,8 +98,7 @@ For more detailed MCP setup instructions, please refer to the [original document
      - The database ID can be found in the Notion page URL (e.g., `https://www.notion.so/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`, use the part before any query string).
      - **Important:** Use the database ID, not the page ID.
 
-![Notion Usage Example](screenshot/notion_usage.png)
-
+![Notion Usage Example](https://raw.githubusercontent.com/chun92/claude-task-master/main/screenshot/notion_usage.png)
 #### 3. Updating for Existing Task Master Users
 
 If you have a `tasks.json` from version 0.20.0 or later, you can use it directly. (Migration from older versions is not guaranteed.)
