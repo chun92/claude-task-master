@@ -758,8 +758,7 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 					syncTasksWithNotion(
 						previousData._rawTaggedData,
 						cleanData,
-						projectRoot,
-						{ debug: false }
+						projectRoot
 					);
 				} catch (e) {
 					console.warn('syncTasksWithNotion debug failed:', e);

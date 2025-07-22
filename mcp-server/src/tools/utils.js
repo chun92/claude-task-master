@@ -15,6 +15,7 @@ import {
 	lastFoundProjectRoot,
 	PROJECT_MARKERS
 } from '../core/utils/path-utils.js';
+import { setMcpLoggerForNotion } from '../../../scripts/modules/notion.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -761,6 +762,9 @@ function withNormalizedProjectRoot(executeFn) {
 
 			// Inject the normalized root back into args
 			const updatedArgs = { ...args, projectRoot: normalizedRoot };
+
+			// update notion log
+			setMcpLoggerForNotion(log);
 
 			// Execute the original function with normalized root in args
 			return await executeFn(updatedArgs, context);

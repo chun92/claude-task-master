@@ -114,10 +114,11 @@ After completing all setup, when you run Task Master commands such as `parse-prd
 - It is recommended to use this tool from the console.
 - MCP mode is supported, but some issues may occur during testing.
 - `task-master-notion` shares the same `tasks.json` file as the original `task-master` and can be used together, but for stability, it is recommended to use only one tool at a time. If you use your existing `tasks.json` from `task-master` with `task-master-notion`, it is strongly recommended to make a backup just in case. The author is not responsible for any loss or corruption of your original file.
- As of v0.20.0:
-  - MCP may create duplicate tasks or use legacy formats unpredictably in multi-tag environments.
-  - If using MCP, avoid using tag features. Promoting subtasks to tasks may cause dependency issues.
-- If you need to update a large amount of data to Notion, be aware that Notion API rate limits and bulk update reliability have not been fully tested. Failures may occur in such cases.
+
+## Known Bugs (Current Version)
+- If there are tasks in the master tag, running `parse` in another tag will re-add all master tag tasks to that tag. This can result in duplication of master tasks across tags.
+- MCP may create duplicate tasks or use legacy formats unpredictably in multi-tag environments.
+- If using MCP, avoid using tag features. Promoting subtasks to tasks may cause dependency issues.
 
 ## Version Support
 
@@ -126,7 +127,7 @@ After completing all setup, when you run Task Master commands such as `parse-prd
 | v0.20.0          | Supported          |
 | Earlier versions | Not supported      |
 
-This fork will continue to track and update for versions after v0.20.0.
+This fork will continue to track and update for versions after v0.20.0
 
 ## License
 
