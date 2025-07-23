@@ -293,6 +293,8 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			}
 		}
 
+		const previousData = JSON.parse(JSON.stringify(outputData));
+
 		// Update only the target tag, preserving other tags
 		outputData[targetTag] = {
 			tasks: finalTasks,
@@ -313,7 +315,7 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			try {
 				const { syncTasksWithNotion } = await import('../notion.js');
 				syncTasksWithNotion(
-					{},
+					previousData,
 					outputData,
 					projectRoot
 				);

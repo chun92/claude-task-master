@@ -116,8 +116,8 @@ After completing all setup, when you run Task Master commands such as `parse-prd
 - `task-master-notion` shares the same `tasks.json` file as the original `task-master` and can be used together, but for stability, it is recommended to use only one tool at a time. If you use your existing `tasks.json` from `task-master` with `task-master-notion`, it is strongly recommended to make a backup just in case. The author is not responsible for any loss or corruption of your original file.
 
 ## Known Bugs (Current Version)
-- If there are tasks in the master tag, running `parse` in another tag will re-add all master tag tasks to that tag. This can result in duplication of master tasks across tags.
 - MCP may create duplicate tasks or use legacy formats unpredictably in multi-tag environments.
+- MCP may expand tasks in wrong way with multi-tag environments.
 
 
 ## Version Support
