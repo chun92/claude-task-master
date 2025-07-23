@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { Client } from '@notionhq/client';
 import { COMPLEXITY_REPORT_FILE, TASKMASTER_TASKS_FILE } from '../../src/constants/paths.js';
 import { getCurrentTag, readJSON, log } from './utils.js';
-import { createLogWrapper } from '../../mcp-server/src/tools/utils.js';
+import { currentTaskMaster } from '../../src/task-master.js';
 
 const LOG_TAG = '[NOTION]';
 let logger = {
@@ -122,9 +122,29 @@ function loadNotionEnv(envPath) {
  * @param {string} [file] - Optional path to the complexity report file (default: COMPLEXITY_REPORT_FILE)
  * @returns {Array<{id: number|string, complexityScore: number, title: string}>}
  */
-function getTaskComplexityInfo(projectRoot) {
+function getTaskComplexityInfo(projectRoot, tag) {
     try {
-        const file = path.resolve(projectRoot, COMPLEXITY_REPORT_FILE);
+        const taskMaster = currentTaskMaster;
+        let file;
+        if (taskMaster) {
+            file = taskMaster.getComplexityReportPath();
+        } else {
+            // If tag is provided and not 'master', use the new filename convention
+            if (tag && tag !== 'master') {
+                const extIdx = COMPLEXITY_REPORT_FILE.lastIndexOf('.json');
+                if (extIdx !== -1) {
+                    file = path.resolve(
+                        projectRoot,
+                        COMPLEXITY_REPORT_FILE.slice(0, extIdx) + `_${tag}.json`
+                    );
+                } else {
+                    // fallback if .json not found
+                    file = path.resolve(projectRoot, COMPLEXITY_REPORT_FILE + `_${tag}`);
+                }
+            } else {
+                file = path.resolve(projectRoot, COMPLEXITY_REPORT_FILE);
+            }
+        }
         if (!fs.existsSync(file)) {
             logger.error(`Complexity report file not found: ${file}`);
             return [];
@@ -655,6 +675,7 @@ async function updateTaskInNotion(task, tag, mapping, meta, mappingFile) {
  * @param {boolean} [debug=false] - If true, prints update log to console
  */
 async function updateNotionComplexityForCurrentTag(projectRoot) {
+    const taskMaster = currentTaskMaster;
     const debug = process.env.TASKMASTER_DEBUG || false;
     await initNotion();
     logger.info(`Starting complexity update for current tag in Notion...`);
@@ -662,12 +683,12 @@ async function updateNotionComplexityForCurrentTag(projectRoot) {
         logger.error(`Notion sync is disabled. Skipping syncTasksWithNotion.`);
         return;
     }
-    const tag = getCurrentTag(projectRoot);
+    const tag = taskMaster ? taskMaster.getCurrentTag() : getCurrentTag(projectRoot);
     const mappingFile = path.resolve(projectRoot, TASKMASTER_NOTION_SYNC_FILE);
-    const taskmasterTasksFile = path.join(projectRoot, TASKMASTER_TASKS_FILE);
+    const taskmasterTasksFile = taskMaster ? taskMaster.getTasksPath() : path.join(projectRoot, TASKMASTER_TASKS_FILE);
     const data = readJSON(taskmasterTasksFile, projectRoot, tag);
     const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
-    const complexityInfo = getTaskComplexityInfo(projectRoot);
+    const complexityInfo = getTaskComplexityInfo(projectRoot, tag);
     // Load mapping
     let { mapping, meta } = loadNotionSyncMapping(mappingFile);
 

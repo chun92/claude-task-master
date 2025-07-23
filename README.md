@@ -118,12 +118,13 @@ After completing all setup, when you run Task Master commands such as `parse-prd
 ## Known Bugs (Current Version)
 - If there are tasks in the master tag, running `parse` in another tag will re-add all master tag tasks to that tag. This can result in duplication of master tasks across tags.
 - MCP may create duplicate tasks or use legacy formats unpredictably in multi-tag environments.
-- If using MCP, avoid using tag features. Promoting subtasks to tasks may cause dependency issues.
+
 
 ## Version Support
 
 | Original Version | Notion Sync Support |
 |------------------|--------------------|
+| v0.21.0          | Supported          |
 | v0.20.0          | Supported          |
 | Earlier versions | Not supported      |
 

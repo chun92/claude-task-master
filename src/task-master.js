@@ -145,6 +145,9 @@ export class TaskMaster {
 	}
 }
 
+// For notion sync and other modules that need to access the current TaskMaster instance
+export let currentTaskMaster = null;
+
 /**
  * Initializes a TaskMaster instance with resolved paths.
  * This function centralizes path resolution logic.
@@ -346,5 +349,7 @@ export function initTaskMaster(overrides = {}) {
 		);
 	}
 
-	return new TaskMaster(paths, overrides.tag);
+	const taskMaster = new TaskMaster(paths, overrides.tag);
+	currentTaskMaster = taskMaster;
+	return taskMaster;
 }
