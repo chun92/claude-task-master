@@ -109,6 +109,40 @@ All updates to tasks in your project will be processed in bulk.
 
 After completing all setup, when you run Task Master commands such as `parse-prd`, `update`, `analyze-complexity`, or `set-status` to update the state of your tasks, those tasks will be automatically synced to Notion.
 
+### Notion Sync Management Commands
+
+For maintaining and troubleshooting your Notion synchronization, the following commands are available:
+
+#### Validate Notion Sync
+```sh
+task-master-notion validate-notion-sync
+```
+Validates the integrity of your Notion synchronization by:
+- Checking for orphaned pages in Notion
+- Identifying local tasks without corresponding Notion pages  
+- Detecting synchronization inconsistencies
+- Providing detailed diagnostic reports
+
+#### Repair Notion Sync
+```sh
+task-master-notion repair-notion-db [options]
+```
+Repairs synchronization issues and manages duplicate pages:
+- `--preserve-extra-tasks`: Keep duplicate tasks instead of removing them
+- Removes orphaned pages and duplicate entries
+- Fixes mapping inconsistencies between local tasks and Notion pages
+- Provides comprehensive repair reports
+
+#### Reset Notion Database
+```sh
+task-master-notion reset-notion-db
+```
+Completely resets your Notion database:
+- **⚠️ Warning**: This will delete all pages in your Notion database
+- Useful for starting fresh or resolving complex synchronization issues
+- Requires confirmation before proceeding
+- All local tasks will be re-synced to Notion after reset
+
 ## Cautions
 
 - It is recommended to use this tool from the console.
