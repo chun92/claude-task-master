@@ -89,7 +89,7 @@ function displayBanner() {
 	if (isSilentMode()) return;
 
 	// console.clear(); // Removing this to avoid clearing the terminal per command
-	const bannerText = figlet.textSync('Task Master', {
+	const bannerText = figlet.textSync('Task Master Notion', {
 		font: 'Standard',
 		horizontalLayout: 'default',
 		verticalLayout: 'default'
@@ -497,7 +497,7 @@ function displayHelp() {
 	const terminalWidth = process.stdout.columns || 100; // Default to 100 if can't detect
 
 	console.log(
-		boxen(chalk.white.bold('Task Master CLI'), {
+		boxen(chalk.white.bold('Task Master Notion CLI'), {
 			padding: 1,
 			borderColor: 'blue',
 			borderStyle: 'round',
@@ -742,6 +742,27 @@ function displayHelp() {
 					name: 'fix-dependencies',
 					args: '',
 					desc: 'Fix invalid dependencies automatically'
+				}
+			]
+		},
+		{
+			title: 'Notion Integration',
+			color: 'yellow',
+			commands: [
+				{
+					name: 'validate-notion-sync',
+					args: '',
+					desc: 'Validate the integrity of Notion synchronization by comparing TaskMaster tasks with Notion DB tasks'
+				},
+				{
+					name: 'repair-notion-db',
+					args: '[--preserve-extra-tasks]',
+					desc: 'Intelligently repair Notion DB by removing duplicates and synchronizing missing TaskMaster tasks'
+				},
+				{
+					name: 'reset-notion-db',
+					args: '',
+					desc: 'Completely reset the Notion DB by archiving all pages and recreating from TaskMaster tasks'
 				}
 			]
 		}

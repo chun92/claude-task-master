@@ -9,10 +9,7 @@
 		"task-master-notion-mcp": "mcp-server/server.js",
 		"task-master-ai-notion": "mcp-server/server.js"
 	},
-	"workspaces": [
-		"apps/*",
-		"."
-	],
+	"workspaces": ["apps/*", "."],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",

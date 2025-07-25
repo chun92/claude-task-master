@@ -143,6 +143,11 @@ import {
 	generateProfileRemovalSummary,
 	categorizeRemovalResults
 } from '../../src/utils/profiles.js';
+import {
+	validateNotionSyncCommand,
+	resetNotionDBCommand,
+	repairNotionDBCommand
+} from './notion-commands.js';
 
 /**
  * Runs the interactive setup process for model configuration.
@@ -4673,6 +4678,50 @@ Examples:
 		.on('error', function (err) {
 			console.error(chalk.red(`Error: ${err.message}`));
 			process.exit(1);
+		});
+
+	// repair-notion-db command - comprehensive repair tool
+	programInstance
+		.command('repair-notion-db')
+		.description(
+			'Intelligently repair Notion DB by removing duplicates and synchronizing missing TaskMaster tasks'
+		)
+		.option(
+			'--dry-run',
+			'Preview changes without applying them - shows what would be repaired'
+		)
+		.option(
+			'--preserve-extra-tasks',
+			'Keep tasks that exist in Notion DB but not in TaskMaster (default: remove them)'
+		)
+		.action(async (options) => {
+			await repairNotionDBCommand({
+				dryRun: options.dryRun || false,
+				preserveExtraTasks: options.preserveExtraTasks || false
+			});
+		});
+
+	// validate-notion-sync command
+	programInstance
+		.command('validate-notion-sync')
+		.description(
+			'Validate the integrity of Notion synchronization by comparing TaskMaster tasks with Notion DB tasks'
+		)
+		.option('-v, --verbose', 'Show detailed information about issues found')
+		.action(async (options) => {
+			await validateNotionSyncCommand({
+				verbose: options.verbose || false
+			});
+		});
+
+	// reset-notion-db command
+	programInstance
+		.command('reset-notion-db')
+		.description(
+			'Completely reset the Notion DB by archiving all pages and recreating from TaskMaster tasks'
+		)
+		.action(async (options) => {
+			await resetNotionDBCommand(options);
 		});
 
 	return programInstance;

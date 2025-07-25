@@ -5,6 +5,7 @@ import Table from 'cli-table3';
 
 import { log, readJSON, writeJSON, truncate, isSilentMode } from '../utils.js';
 import { displayBanner } from '../ui.js';
+import { syncTasksWithNotion } from '../notion.js';
 
 /**
  * Clear subtasks from specified tasks
@@ -14,7 +15,7 @@ import { displayBanner } from '../ui.js';
  * @param {string} [context.projectRoot] - Project root path
  * @param {string} [context.tag] - Tag for the task
  */
-function clearSubtasks(tasksPath, taskIds, context = {}) {
+async function clearSubtasks(tasksPath, taskIds, context = {}) {
 	const { projectRoot, tag } = context;
 	log('info', `Reading tasks from ${tasksPath}...`);
 	const data = readJSON(tasksPath, projectRoot, tag);
@@ -22,6 +23,9 @@ function clearSubtasks(tasksPath, taskIds, context = {}) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
 	}
+
+	// Store the original data for Notion sync (before modifications)
+	const originalData = JSON.parse(JSON.stringify(data));
 
 	if (!isSilentMode()) {
 		console.log(
@@ -86,6 +90,29 @@ function clearSubtasks(tasksPath, taskIds, context = {}) {
 
 	if (clearedCount > 0) {
 		writeJSON(tasksPath, data, projectRoot, tag);
+
+		// Synchronize with Notion to delete removed subtasks
+		try {
+			log('info', 'Syncing subtask deletions with Notion...');
+			// Create the tasks structure expected by syncTasksWithNotion
+			const prevTasks = {};
+			const currentTasks = {};
+
+			// Use the tag from the data, or fallback to provided tag or 'master'
+			const currentTag = data.tag || tag || 'master';
+
+			prevTasks[currentTag] = { tasks: originalData.tasks };
+			currentTasks[currentTag] = { tasks: data.tasks };
+
+			await syncTasksWithNotion(prevTasks, currentTasks, projectRoot);
+			log('info', 'Notion sync completed successfully');
+		} catch (error) {
+			log('warn', `Failed to sync with Notion: ${error.message}`);
+			log(
+				'warn',
+				'Subtasks were cleared locally but may still exist in Notion'
+			);
+		}
 
 		// Show summary table
 		if (!isSilentMode()) {
