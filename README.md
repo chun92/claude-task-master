@@ -128,7 +128,7 @@ Validates the integrity of your Notion synchronization by:
 task-master-notion repair-notion-db [options]
 ```
 Repairs synchronization issues and manages duplicate pages:
-- `--preserve-extra-tasks`: Keep duplicate tasks instead of removing them
+- `--preserve-extra-tasks`: Keep tasks you've created manually in Notion while still syncing with TaskMaster
 - Removes orphaned pages and duplicate entries
 - Fixes mapping inconsistencies between local tasks and Notion pages
 - Provides comprehensive repair reports
