@@ -314,16 +314,12 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		(async () => {
 			try {
 				const { syncTasksWithNotion } = await import('../notion.js');
-				syncTasksWithNotion(
-					previousData,
-					outputData,
-					projectRoot
-				);
+				syncTasksWithNotion(previousData, outputData, projectRoot);
 			} catch (e) {
 				console.warn('syncTasksWithNotion debug failed:', e);
 			}
 		})();
-		
+
 		// Write the complete data structure back to the file
 		fs.writeFileSync(tasksPath, JSON.stringify(outputData, null, 2));
 		report(
