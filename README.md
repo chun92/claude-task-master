@@ -158,6 +158,7 @@ Completely resets your Notion database:
 
 | Original Version | Notion Sync Support |
 |------------------|--------------------|
+| v0.22.0          | Supported          |
 | v0.21.0          | Supported          |
 | v0.20.0          | Supported          |
 | Earlier versions | Not supported      |

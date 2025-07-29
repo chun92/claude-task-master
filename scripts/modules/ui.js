@@ -9,6 +9,7 @@ import boxen from 'boxen';
 import ora from 'ora';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
+import readline from 'readline';
 import {
 	log,
 	findTaskById,
@@ -1703,18 +1704,15 @@ async function displayComplexityReport(reportPath) {
 			)
 		);
 
-		const readline = require('readline').createInterface({
+		const rl = readline.createInterface({
 			input: process.stdin,
 			output: process.stdout
 		});
 
 		const answer = await new Promise((resolve) => {
-			readline.question(
-				chalk.cyan('Generate complexity report? (y/n): '),
-				resolve
-			);
+			rl.question(chalk.cyan('Generate complexity report? (y/n): '), resolve);
 		});
-		readline.close();
+		rl.close();
 
 		if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
 			// Call the analyze-complexity command
@@ -1995,8 +1993,6 @@ async function confirmTaskOverwrite(tasksPath) {
 		)
 	);
 
-	// Use dynamic import to get the readline module
-	const readline = await import('readline');
 	const rl = readline.createInterface({
 		input: process.stdin,
 		output: process.stdout
@@ -2484,8 +2480,6 @@ async function displayMultipleTasksSummary(
 			)
 		);
 
-		// Use dynamic import for readline
-		const readline = await import('readline');
 		const rl = readline.createInterface({
 			input: process.stdin,
 			output: process.stdout

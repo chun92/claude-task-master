@@ -1,11 +1,10 @@
 ---
-description: Comprehensive reference for Taskmaster MCP tools and CLI commands.
-globs: **/*
-alwaysApply: true
+inclusion: always
 ---
+
 # Taskmaster Tool & Command Reference
 
-This document provides a detailed reference for interacting with Taskmaster, covering both the recommended MCP tools, suitable for integrations like Cursor, and the corresponding `task-master` CLI commands, designed for direct user interaction or fallback.
+This document provides a detailed reference for interacting with Taskmaster, covering both the recommended MCP tools, suitable for integrations like Kiro, and the corresponding `task-master` CLI commands, designed for direct user interaction or fallback.
 
 **Note:** For interacting with Taskmaster programmatically or via integrated tools, using the **MCP tools is strongly recommended** due to better performance, structured data, and error handling. The CLI commands serve as a user-friendly alternative and fallback. 
 
@@ -26,7 +25,6 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `--name <name>`: `Set the name for your project in Taskmaster's configuration.`
     *   `--description <text>`: `Provide a brief description for your project.`
     *   `--version <version>`: `Set the initial version for your project, e.g., '0.1.0'.`
-    *   `--no-git`: `Skip initializing a Git repository entirely.`
     *   `-y, --yes`: `Initialize Taskmaster quickly using default settings without interactive prompts.`
 *   **Usage:** Run this once at the beginning of a new project.
 *   **MCP Variant Description:** `Set up the basic Taskmaster file structure and configuration in the current directory for a new project by running the 'task-master init' command.`
@@ -37,9 +35,8 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `authorName`: `Author name.` (CLI: `--author <author>`)
     *   `skipInstall`: `Skip installing dependencies. Default is false.` (CLI: `--skip-install`)
     *   `addAliases`: `Add shell aliases tm and taskmaster. Default is false.` (CLI: `--aliases`)
-    *   `noGit`: `Skip initializing a Git repository entirely. Default is false.` (CLI: `--no-git`)
     *   `yes`: `Skip prompts and use defaults/provided arguments. Default is false.` (CLI: `-y, --yes`)
-*   **Usage:** Run this once at the beginning of a new project, typically via an integrated tool like Cursor. Operates on the current working directory of the MCP server. 
+*   **Usage:** Run this once at the beginning of a new project, typically via an integrated tool like Kiro. Operates on the current working directory of the MCP server. 
 *   **Important:** Once complete, you *MUST* parse a prd in order to generate tasks. There will be no tasks files until then. The next step after initializing should be to create a PRD using the example PRD in .taskmaster/templates/example_prd.txt. 
 *   **Tagging:** Use the `--tag` option to parse the PRD into a specific, non-default tag context. If the tag doesn't exist, it will be created automatically. Example: `task-master parse-prd spec.txt --tag=new-feature`.
 
@@ -552,8 +549,8 @@ Environment variables are used **only** for sensitive API keys related to AI pro
     *   `AZURE_OPENAI_ENDPOINT`
     *   `OLLAMA_BASE_URL` (Default: `http://localhost:11434/api`)
 
-**Set API keys** in your **`.env`** file in the project root (for CLI use) or within the `env` section of your **`.cursor/mcp.json`** file (for MCP/Cursor integration). All other settings (model choice, max tokens, temperature, log level, custom endpoints) are managed in `.taskmaster/config.json` via `task-master models` command or `models` MCP tool.
+**Set API keys** in your **`.env`** file in the project root (for CLI use) or within the `env` section of your **`.kiro/mcp.json`** file (for MCP/Kiro integration). All other settings (model choice, max tokens, temperature, log level, custom endpoints) are managed in `.taskmaster/config.json` via `task-master models` command or `models` MCP tool.
 
 ---
 
-For details on how these commands fit into the development process, see the [Development Workflow Guide](mdc:.cursor/rules/dev_workflow.mdc).
+For details on how these commands fit into the development process, see the [dev_workflow.md](.kiro/steering/dev_workflow.md).

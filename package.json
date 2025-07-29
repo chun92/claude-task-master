@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai-notion",
-	"version": "0.21.1",
+	"version": "0.22.0",
 	"description": "Sync your local Task Master tasks to Notion, enabling powerful Kanban, timeline, and calendar views. Fork of claude-task-master with Notion integration.",
 	"main": "index.js",
 	"type": "module",
@@ -88,7 +88,7 @@
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^1.0.25",
 		"@biomejs/cli-linux-x64": "^1.9.4",
-		"ai-sdk-provider-gemini-cli": "^0.0.4"
+		"ai-sdk-provider-gemini-cli": "^0.1.1"
 	},
 	"engines": {
 		"node": ">=18.0.0"
