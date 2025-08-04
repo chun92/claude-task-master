@@ -41,6 +41,8 @@ import { registerRulesTool } from './rules.js';
 import { registerValidateNotionSyncTool } from './validate-notion-sync.js';
 import { registerResetNotionTool } from './reset-notion.js';
 import { registerRepairNotionTool } from './repair-notion.js';
+import { registerScopeUpTool } from './scope-up.js';
+import { registerScopeDownTool } from './scope-down.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -60,6 +62,8 @@ export function registerTaskMasterTools(server) {
 		registerAnalyzeProjectComplexityTool(server);
 		registerExpandTaskTool(server);
 		registerExpandAllTool(server);
+		registerScopeUpTool(server);
+		registerScopeDownTool(server);
 
 		// Group 3: Task Listing & Viewing
 		registerListTasksTool(server);
