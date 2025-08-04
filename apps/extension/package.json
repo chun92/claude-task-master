@@ -1,8 +1,8 @@
 {
-	"name": "extension",
+	"name": "task-master-notion-extension",
 	"private": true,
-	"displayName": "TaskMaster",
-	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
+	"displayName": "TaskMaster Notion",
+	"description": "A visual Kanban board interface for TaskMaster projects in VS Code with Notion synchronization",
 	"version": "0.23.0",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
@@ -64,15 +64,15 @@
 			"properties": {
 				"taskmaster.mcp.command": {
 					"type": "string",
-					"default": "npx",
-					"description": "The command or absolute path to execute for the MCP server (e.g., 'npx' or '/usr/local/bin/task-master-ai')."
+					"default": "task-master-notion-mcp",
+					"description": "The command or absolute path to execute for the MCP server (e.g., 'task-master-notion-mcp' or '/usr/local/bin/task-master-notion-mcp')."
 				},
 				"taskmaster.mcp.args": {
 					"type": "array",
 					"items": {
 						"type": "string"
 					},
-					"default": ["task-master-ai"],
+					"default": [],
 					"description": "An array of arguments to pass to the MCP server command."
 				},
 				"taskmaster.mcp.cwd": {

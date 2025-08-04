@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod';
-import { withNormalizedProjectRoot } from '../utils/project-path.js';
+import { withNormalizedProjectRoot } from './utils.js';
 import { resetNotionDB } from '../../../scripts/modules/notion.js';
 
 /**
@@ -11,14 +11,15 @@ import { resetNotionDB } from '../../../scripts/modules/notion.js';
  * @param {FastMCP} server - The MCP server instance
  */
 export function registerResetNotionTool(server) {
-	server.tool(
-		'reset_notion_db',
-		'Completely reset the Notion database by archiving all existing pages and recreating them from local tasks. This ensures a clean, ordered synchronization.',
-		{
+	server.addTool({
+		name: 'reset_notion_db',
+		description: 'Completely reset the Notion database by archiving all existing pages and recreating them from local tasks. This ensures a clean, ordered synchronization.',
+		parameters: z.object({
 			projectRoot: z.string().describe('Project root directory path (required)')
-		},
-		withNormalizedProjectRoot(async ({ projectRoot }) => {
+		}),
+		execute: withNormalizedProjectRoot(async ({ projectRoot }, { log }) => {
 			try {
+				log.info(`Resetting Notion database for project: ${projectRoot}`);
 				const result = await resetNotionDB(projectRoot);
 
 				if (result.success) {
@@ -41,5 +42,5 @@ export function registerResetNotionTool(server) {
 				};
 			}
 		})
-	);
+	});
 }

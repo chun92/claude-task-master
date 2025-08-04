@@ -143,10 +143,101 @@ Completely resets your Notion database:
 - Requires confirmation before proceeding
 - All local tasks will be re-synced to Notion after reset
 
+## VS Code Extension Installation
+
+In addition to the command-line interface and MCP integration, Task Master Notion now includes a **VS Code Extension** that provides a visual Kanban board interface with full Notion synchronization support.
+
+### Installation Steps
+
+#### Option 1: Install Pre-built VSIX (Recommended)
+
+1. **Download the Extension**:
+   - Download the latest VSIX file from the [releases page](https://github.com/chun92/claude-task-master/releases)
+   - Or build locally (see Option 2 below)
+
+2. **Install via VS Code**:
+   ```bash
+   # Method 1: Command line
+   code --install-extension path/to/task-master-notion-extension-0.23.0.vsix
+
+   # Method 2: VS Code UI
+   # 1. Open VS Code
+   # 2. Press Ctrl+Shift+P (or Cmd+Shift+P on Mac)
+   # 3. Type "Extensions: Install from VSIX..."
+   # 4. Select the downloaded VSIX file
+   ```
+
+3. **Configure Extension Settings**:
+   - Open VS Code Settings (`Ctrl+,`)
+   - Search for "taskmaster"
+   - Ensure the following settings are configured:
+     ```json
+     {
+       "taskmaster.mcp.command": "task-master-notion-mcp",
+       "taskmaster.mcp.args": [],
+       "taskmaster.mcp.env": {
+         "NOTION_TOKEN": "your_notion_token_here",
+         "NOTION_DATABASE_ID": "your_database_id_here",
+         "ANTHROPIC_API_KEY": "your_api_key_here"
+       }
+     }
+     ```
+
+#### Option 2: Build from Source
+
+1. **Clone and Build**:
+   ```bash
+   git clone https://github.com/chun92/claude-task-master
+   cd claude-task-master/apps/extension
+   npm install
+   npm run package
+   cd vsix-build
+   npx vsce package --no-dependencies
+   ```
+
+2. **Install Built Extension**:
+   ```bash
+   code --install-extension task-master-notion-extension-0.23.0.vsix
+   ```
+
+### Features
+
+The VS Code Extension provides:
+
+- **🎯 Kanban Board View**: Visual task management with drag-and-drop functionality
+- **📋 Task Details Panel**: Rich task information with subtasks, dependencies, and notes
+- **🔄 Real-time Notion Sync**: All changes automatically sync to your Notion database
+- **🏷️ Tag Support**: Switch between different task contexts
+- **⚡ scope-up/scope-down**: AI-powered task complexity adjustment
+- **📊 Task Status Management**: Easy status updates with visual feedback
+
+### Usage
+
+1. **Open Task Master Panel**:
+   - Click the TaskMaster icon in the Activity Bar
+   - Or use `Ctrl+Shift+P` → "TaskMaster: Show Board"
+
+2. **Manage Tasks Visually**:
+   - Drag tasks between status columns
+   - Click tasks to view/edit details
+   - Use AI actions to expand or adjust task complexity
+
+3. **Notion Integration**:
+   - All changes are automatically synced to Notion
+   - Create rich task details in Notion that sync back to VS Code
+   - Use Notion's database views alongside the VS Code interface
+
+### Troubleshooting
+
+- **Connection Issues**: Check that `task-master-notion-mcp` command is available in your PATH
+- **Sync Problems**: Verify NOTION_TOKEN and NOTION_DATABASE_ID in extension settings
+- **Performance**: Large task lists (>100 tasks) may experience slower loading
+
 ## Cautions
 
-- It is recommended to use this tool from the console.
-- MCP mode is supported, but some issues may occur during testing.
+- It is recommended to use this tool from the console for complex operations.
+- MCP mode is supported and stable with the latest updates.
+- The VS Code Extension provides the best visual experience with full Notion sync support.
 - `task-master-notion` shares the same `tasks.json` file as the original `task-master` and can be used together, but for stability, it is recommended to use only one tool at a time. If you use your existing `tasks.json` from `task-master` with `task-master-notion`, it is strongly recommended to make a backup just in case. The author is not responsible for any loss or corruption of your original file.
 
 ## Known Bugs (Current Version)
@@ -158,9 +249,10 @@ Completely resets your Notion database:
 
 | Original Version | Notion Sync Support |
 |------------------|--------------------|
-| v0.22.0          | Supported          |
-| v0.21.0          | Supported          |
-| v0.20.0          | Supported          |
+| v.0.23.0          | Supported          |
+| v.0.22.0          | Supported          |
+| v.0.21.0          | Supported          |
+| v.0.20.0          | Supported          |
 | Earlier versions | Not supported      |
 
 This fork will continue to track and update for versions after v0.20.0
