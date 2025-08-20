@@ -87,7 +87,7 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 			: processedNewTasks;
 
 		// Save to file
-		saveTasksToFile(config.tasksPath, finalTasks, config.targetTag, logger);
+		saveTasksToFile(config.tasksPath, finalTasks, config.targetTag, logger, config.projectRoot);
 
 		// Handle completion reporting
 		await handleCompletionReporting(

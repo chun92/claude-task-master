@@ -180,7 +180,7 @@ export function processTasks(
  * @param {string} targetTag - Target tag
  * @param {Object} logger - Logger instance
  */
-export function saveTasksToFile(tasksPath, tasks, targetTag, logger) {
+export function saveTasksToFile(tasksPath, tasks, targetTag, logger, projectRoot) {
 	// Create directory if it doesn't exist
 	const tasksDir = path.dirname(tasksPath);
 	if (!fs.existsSync(tasksDir)) {
@@ -198,6 +198,8 @@ export function saveTasksToFile(tasksPath, tasks, targetTag, logger) {
 		}
 	}
 
+	const previousData = JSON.parse(JSON.stringify(outputData));
+
 	// Update only the target tag
 	outputData[targetTag] = {
 		tasks: tasks,
@@ -214,6 +216,15 @@ export function saveTasksToFile(tasksPath, tasks, targetTag, logger) {
 		description: `Tasks for ${targetTag} context`
 	});
 
+	(async () => {
+		try {
+			const { syncTasksWithNotion } = await import('../../notion.js');
+			syncTasksWithNotion(previousData, outputData, projectRoot);
+		} catch (e) {
+			console.warn('syncTasksWithNotion debug failed:', e);
+		}
+	})();
+	
 	// Write back to file
 	fs.writeFileSync(tasksPath, JSON.stringify(outputData, null, 2));
 

@@ -249,6 +249,7 @@ The VS Code Extension provides:
 
 | Original Version | Notion Sync Support |
 |------------------|--------------------|
+| v.0.25.0          | Supported          |
 | v.0.24.0          | Supported          |
 | v.0.23.0          | Supported          |
 | v.0.22.0          | Supported          |
