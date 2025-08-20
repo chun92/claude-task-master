@@ -1,5 +1,14 @@
 # task-master-ai
 
+## 0.26.0
+
+### Minor Changes
+
+- [`a3ab828`](https://github.com/eyaltoledano/claude-task-master/commit/a3ab828858e01fddcb5b21bd95d9c8a995269e3a) Thanks [@flosrn](https://github.com/flosrn)! - Add comprehensive Notion sync diagnostic and repair tools
+  - Add `validate-notion-sync` command for integrity checking
+  - Add `repair-notion-db` command for automatic issue resolution
+  - Add `reset-notion-db` command for complete database reset
+
 ## 0.25.0
 
 ### Minor Changes
