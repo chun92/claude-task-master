@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai-notion",
-	"version": "0.25.0",
+	"version": "0.26.0",
 	"description": "Sync your local Task Master tasks to Notion, enabling powerful Kanban, timeline, and calendar views. Fork of claude-task-master with Notion integration.",
 	"main": "index.js",
 	"type": "module",
