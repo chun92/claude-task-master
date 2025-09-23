@@ -1,4 +1,13 @@
-import { generateObject, generateText, streamText } from 'ai';
+import {
+	generateObject,
+	generateText,
+	streamText,
+	streamObject,
+	zodSchema,
+	JSONParseError,
+	NoObjectGeneratedError
+} from 'ai';
+import { jsonrepair } from 'jsonrepair';
 import { log } from '../../scripts/modules/utils.js';
 
 /**
@@ -53,8 +62,11 @@ export class BaseAIProvider {
 		) {
 			throw new Error('Temperature must be between 0 and 1');
 		}
-		if (params.maxTokens !== undefined && params.maxTokens <= 0) {
-			throw new Error('maxTokens must be greater than 0');
+		if (params.maxTokens !== undefined) {
+			const maxTokens = Number(params.maxTokens);
+			if (!Number.isFinite(maxTokens) || maxTokens <= 0) {
+				throw new Error('maxTokens must be a finite number greater than 0');
+			}
 		}
 	}
 
@@ -115,6 +127,37 @@ export class BaseAIProvider {
 	}
 
 	/**
+	 * Determines if a model requires max_completion_tokens instead of maxTokens
+	 * Can be overridden by providers to specify their model requirements
+	 * @param {string} modelId - The model ID to check
+	 * @returns {boolean} True if the model requires max_completion_tokens
+	 */
+	requiresMaxCompletionTokens(modelId) {
+		return false; // Default behavior - most models use maxTokens
+	}
+
+	/**
+	 * Prepares token limit parameter based on model requirements
+	 * @param {string} modelId - The model ID
+	 * @param {number} maxTokens - The maximum tokens value
+	 * @returns {object} Object with either maxTokens or max_completion_tokens
+	 */
+	prepareTokenParam(modelId, maxTokens) {
+		if (maxTokens === undefined) {
+			return {};
+		}
+
+		// Ensure maxTokens is an integer
+		const tokenValue = Math.floor(Number(maxTokens));
+
+		if (this.requiresMaxCompletionTokens(modelId)) {
+			return { max_completion_tokens: tokenValue };
+		} else {
+			return { maxTokens: tokenValue };
+		}
+	}
+
+	/**
 	 * Generates text using the provider's model
 	 */
 	async generateText(params) {
@@ -131,7 +174,7 @@ export class BaseAIProvider {
 			const result = await generateText({
 				model: client(params.modelId),
 				messages: params.messages,
-				maxTokens: params.maxTokens,
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				temperature: params.temperature
 			});
 
@@ -167,7 +210,7 @@ export class BaseAIProvider {
 			const stream = await streamText({
 				model: client(params.modelId),
 				messages: params.messages,
-				maxTokens: params.maxTokens,
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				temperature: params.temperature
 			});
 
@@ -179,6 +222,46 @@ export class BaseAIProvider {
 			return stream;
 		} catch (error) {
 			this.handleError('text streaming', error);
+		}
+	}
+
+	/**
+	 * Streams a structured object using the provider's model
+	 */
+	async streamObject(params) {
+		try {
+			this.validateParams(params);
+			this.validateMessages(params.messages);
+
+			if (!params.schema) {
+				throw new Error('Schema is required for object streaming');
+			}
+
+			log(
+				'debug',
+				`Streaming ${this.name} object with model: ${params.modelId}`
+			);
+
+			const client = await this.getClient(params);
+			const result = await streamObject({
+				model: client(params.modelId),
+				messages: params.messages,
+				schema: zodSchema(params.schema),
+				mode: params.mode || 'auto',
+				maxTokens: params.maxTokens,
+				temperature: params.temperature
+			});
+
+			log(
+				'debug',
+				`${this.name} streamObject initiated successfully for model: ${params.modelId}`
+			);
+
+			// Return the stream result directly
+			// The stream result contains partialObjectStream and other properties
+			return result;
+		} catch (error) {
+			this.handleError('object streaming', error);
 		}
 	}
 
@@ -206,9 +289,9 @@ export class BaseAIProvider {
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,
-				schema: params.schema,
-				mode: 'auto',
-				maxTokens: params.maxTokens,
+				schema: zodSchema(params.schema),
+				mode: params.mode || 'auto',
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				temperature: params.temperature
 			});
 
@@ -226,6 +309,43 @@ export class BaseAIProvider {
 				}
 			};
 		} catch (error) {
+			// Check if this is a JSON parsing error that we can potentially fix
+			if (
+				NoObjectGeneratedError.isInstance(error) &&
+				JSONParseError.isInstance(error.cause) &&
+				error.cause.text
+			) {
+				log(
+					'warn',
+					`${this.name} generated malformed JSON, attempting to repair...`
+				);
+
+				try {
+					// Use jsonrepair to fix the malformed JSON
+					const repairedJson = jsonrepair(error.cause.text);
+					const parsed = JSON.parse(repairedJson);
+
+					log('info', `Successfully repaired ${this.name} JSON output`);
+
+					// Return in the expected format
+					return {
+						object: parsed,
+						usage: {
+							// Extract usage information from the error if available
+							inputTokens: error.usage?.promptTokens || 0,
+							outputTokens: error.usage?.completionTokens || 0,
+							totalTokens: error.usage?.totalTokens || 0
+						}
+					};
+				} catch (repairError) {
+					log(
+						'error',
+						`Failed to repair ${this.name} JSON: ${repairError.message}`
+					);
+					// Fall through to handleError with original error
+				}
+			}
+
 			this.handleError('object generation', error);
 		}
 	}

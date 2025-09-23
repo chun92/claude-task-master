@@ -18,7 +18,11 @@ import {
 
 import { generateTextService } from '../ai-services-unified.js';
 
-import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
+import {
+	getDefaultSubtasks,
+	getDebugFlag,
+	hasCodebaseAnalysis
+} from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
@@ -451,6 +455,13 @@ async function expandTask(
 		// Load prompts using PromptManager
 		const promptManager = getPromptManager();
 
+		// Check if a codebase analysis provider is being used
+		const hasCodebaseAnalysisCapability = hasCodebaseAnalysis(
+			useResearch,
+			projectRoot,
+			session
+		);
+
 		// Combine all context sources into a single additionalContext parameter
 		let combinedAdditionalContext = '';
 		if (additionalContext || complexityReasoningContext) {
@@ -495,7 +506,9 @@ async function expandTask(
 			complexityReasoningContext: complexityReasoningContext,
 			gatheredContext: gatheredContextText || '',
 			useResearch: useResearch,
-			expansionPrompt: expansionPromptText || undefined
+			expansionPrompt: expansionPromptText || undefined,
+			hasCodebaseAnalysis: hasCodebaseAnalysisCapability,
+			projectRoot: projectRoot || ''
 		};
 
 		let variantKey = 'default';
@@ -513,6 +526,18 @@ async function expandTask(
 
 		const { systemPrompt, userPrompt: promptContent } =
 			await promptManager.loadPrompt('expand-task', promptParams, variantKey);
+
+		// Debug logging to identify the issue
+		logger.debug(`Selected variant: ${variantKey}`);
+		logger.debug(
+			`Prompt params passed: ${JSON.stringify(promptParams, null, 2)}`
+		);
+		logger.debug(
+			`System prompt (first 500 chars): ${systemPrompt.substring(0, 500)}...`
+		);
+		logger.debug(
+			`User prompt (first 500 chars): ${promptContent.substring(0, 500)}...`
+		);
 		// --- End Complexity Report / Prompt Logic ---
 
 		// --- AI Subtask Generation using generateTextService ---

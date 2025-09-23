@@ -72,7 +72,8 @@ const DEFAULTS = {
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
-		responseLanguage: 'English'
+		responseLanguage: 'English',
+		enableCodebaseAnalysis: true
 	},
 	claudeCode: {}
 };
@@ -427,6 +428,63 @@ function getResearchProvider(explicitRoot = null) {
 	return getModelConfigForRole('research', explicitRoot).provider;
 }
 
+/**
+ * Check if codebase analysis feature flag is enabled across all sources
+ * Priority: .env > MCP env > config.json
+ * @param {object|null} session - MCP session object (optional)
+ * @param {string|null} projectRoot - Project root path (optional)
+ * @returns {boolean} True if codebase analysis is enabled
+ */
+function isCodebaseAnalysisEnabled(session = null, projectRoot = null) {
+	// Priority 1: Environment variable
+	const envFlag = resolveEnvVariable(
+		'TASKMASTER_ENABLE_CODEBASE_ANALYSIS',
+		session,
+		projectRoot
+	);
+	if (envFlag !== null && envFlag !== undefined && envFlag !== '') {
+		return envFlag.toLowerCase() === 'true' || envFlag === '1';
+	}
+
+	// Priority 2: MCP session environment
+	if (session?.env?.TASKMASTER_ENABLE_CODEBASE_ANALYSIS) {
+		const mcpFlag = session.env.TASKMASTER_ENABLE_CODEBASE_ANALYSIS;
+		return mcpFlag.toLowerCase() === 'true' || mcpFlag === '1';
+	}
+
+	// Priority 3: Configuration file
+	const globalConfig = getGlobalConfig(projectRoot);
+	return globalConfig.enableCodebaseAnalysis !== false; // Default to true
+}
+
+/**
+ * Check if codebase analysis is available and enabled
+ * @param {boolean} useResearch - Whether to check research provider or main provider
+ * @param {string|null} projectRoot - Project root path (optional)
+ * @param {object|null} session - MCP session object (optional)
+ * @returns {boolean} True if codebase analysis is available and enabled
+ */
+function hasCodebaseAnalysis(
+	useResearch = false,
+	projectRoot = null,
+	session = null
+) {
+	// First check if the feature is enabled
+	if (!isCodebaseAnalysisEnabled(session, projectRoot)) {
+		return false;
+	}
+
+	// Then check if a codebase analysis provider is configured
+	const currentProvider = useResearch
+		? getResearchProvider(projectRoot)
+		: getMainProvider(projectRoot);
+
+	return (
+		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
+		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI
+	);
+}
+
 function getResearchModelId(explicitRoot = null) {
 	return getModelConfigForRole('research', explicitRoot).modelId;
 }
@@ -542,6 +600,11 @@ function getResponseLanguage(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).responseLanguage;
 }
 
+function getCodebaseAnalysisEnabled(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis;
+}
+
 /**
  * Gets model parameters (maxTokens, temperature) for a specific role,
  * considering model-specific overrides from supported-models.json.
@@ -557,6 +620,7 @@ function getParametersForRole(role, explicitRoot = null) {
 	const providerName = roleConfig.provider;
 
 	let effectiveMaxTokens = roleMaxTokens; // Start with the role's default
+	let effectiveTemperature = roleTemperature; // Start with the role's default
 
 	try {
 		// Find the model definition in MODEL_MAP
@@ -583,24 +647,50 @@ function getParametersForRole(role, explicitRoot = null) {
 					`No valid model-specific max_tokens override found for ${modelId}. Using role default: ${roleMaxTokens}`
 				);
 			}
+
+			// Check if a model-specific temperature is defined
+			if (
+				modelDefinition &&
+				typeof modelDefinition.temperature === 'number' &&
+				modelDefinition.temperature >= 0 &&
+				modelDefinition.temperature <= 1
+			) {
+				effectiveTemperature = modelDefinition.temperature;
+				log(
+					'debug',
+					`Applying model-specific temperature (${modelDefinition.temperature}) for ${modelId}`
+				);
+			}
 		} else {
-			log(
-				'debug',
-				`No model definitions found for provider ${providerName} in MODEL_MAP. Using role default maxTokens: ${roleMaxTokens}`
-			);
+			// Special handling for custom OpenRouter models
+			if (providerName === CUSTOM_PROVIDERS.OPENROUTER) {
+				// Use a conservative default for OpenRouter models not in our list
+				const openrouterDefault = 32768;
+				effectiveMaxTokens = Math.min(roleMaxTokens, openrouterDefault);
+				log(
+					'debug',
+					`Custom OpenRouter model ${modelId} detected. Using conservative max_tokens: ${effectiveMaxTokens}`
+				);
+			} else {
+				log(
+					'debug',
+					`No model definitions found for provider ${providerName} in MODEL_MAP. Using role default maxTokens: ${roleMaxTokens}`
+				);
+			}
 		}
 	} catch (lookupError) {
 		log(
 			'warn',
-			`Error looking up model-specific max_tokens for ${modelId}: ${lookupError.message}. Using role default: ${roleMaxTokens}`
+			`Error looking up model-specific parameters for ${modelId}: ${lookupError.message}. Using role defaults.`
 		);
-		// Fallback to role default on error
+		// Fallback to role defaults on error
 		effectiveMaxTokens = roleMaxTokens;
+		effectiveTemperature = roleTemperature;
 	}
 
 	return {
 		maxTokens: effectiveMaxTokens,
-		temperature: roleTemperature
+		temperature: effectiveTemperature
 	};
 }
 
@@ -772,36 +862,38 @@ function getAvailableModels() {
 	const available = [];
 	for (const [provider, models] of Object.entries(MODEL_MAP)) {
 		if (models.length > 0) {
-			models.forEach((modelObj) => {
-				// Basic name generation - can be improved
-				const modelId = modelObj.id;
-				const sweScore = modelObj.swe_score;
-				const cost = modelObj.cost_per_1m_tokens;
-				const allowedRoles = modelObj.allowed_roles || ['main', 'fallback'];
-				const nameParts = modelId
-					.split('-')
-					.map((p) => p.charAt(0).toUpperCase() + p.slice(1));
-				// Handle specific known names better if needed
-				let name = nameParts.join(' ');
-				if (modelId === 'claude-3.5-sonnet-20240620')
-					name = 'Claude 3.5 Sonnet';
-				if (modelId === 'claude-3-7-sonnet-20250219')
-					name = 'Claude 3.7 Sonnet';
-				if (modelId === 'gpt-4o') name = 'GPT-4o';
-				if (modelId === 'gpt-4-turbo') name = 'GPT-4 Turbo';
-				if (modelId === 'sonar-pro') name = 'Perplexity Sonar Pro';
-				if (modelId === 'sonar-mini') name = 'Perplexity Sonar Mini';
+			models
+				.filter((modelObj) => Boolean(modelObj.supported))
+				.forEach((modelObj) => {
+					// Basic name generation - can be improved
+					const modelId = modelObj.id;
+					const sweScore = modelObj.swe_score;
+					const cost = modelObj.cost_per_1m_tokens;
+					const allowedRoles = modelObj.allowed_roles || ['main', 'fallback'];
+					const nameParts = modelId
+						.split('-')
+						.map((p) => p.charAt(0).toUpperCase() + p.slice(1));
+					// Handle specific known names better if needed
+					let name = nameParts.join(' ');
+					if (modelId === 'claude-3.5-sonnet-20240620')
+						name = 'Claude 3.5 Sonnet';
+					if (modelId === 'claude-3-7-sonnet-20250219')
+						name = 'Claude 3.7 Sonnet';
+					if (modelId === 'gpt-4o') name = 'GPT-4o';
+					if (modelId === 'gpt-4-turbo') name = 'GPT-4 Turbo';
+					if (modelId === 'sonar-pro') name = 'Perplexity Sonar Pro';
+					if (modelId === 'sonar-mini') name = 'Perplexity Sonar Mini';
 
-				available.push({
-					id: modelId,
-					name: name,
-					provider: provider,
-					swe_score: sweScore,
-					cost_per_1m_tokens: cost,
-					allowed_roles: allowedRoles,
-					max_tokens: modelObj.max_tokens
+					available.push({
+						id: modelId,
+						name: name,
+						provider: provider,
+						swe_score: sweScore,
+						cost_per_1m_tokens: cost,
+						allowed_roles: allowedRoles,
+						max_tokens: modelObj.max_tokens
+					});
 				});
-			});
 		} else {
 			// For providers with empty lists (like ollama), maybe add a placeholder or skip
 			available.push({
@@ -954,6 +1046,7 @@ export {
 	getResearchModelId,
 	getResearchMaxTokens,
 	getResearchTemperature,
+	hasCodebaseAnalysis,
 	getFallbackProvider,
 	getFallbackModelId,
 	getFallbackMaxTokens,
@@ -970,6 +1063,8 @@ export {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getResponseLanguage,
+	getCodebaseAnalysisEnabled,
+	isCodebaseAnalysisEnabled,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)

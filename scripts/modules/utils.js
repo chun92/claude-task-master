@@ -263,6 +263,43 @@ function hasTaggedStructure(data) {
 }
 
 /**
+ * Normalizes task IDs to ensure they are numbers instead of strings
+ * @param {Array} tasks - Array of tasks to normalize
+ */
+function normalizeTaskIds(tasks) {
+	if (!Array.isArray(tasks)) return;
+
+	tasks.forEach((task) => {
+		// Convert task ID to number with validation
+		if (task.id !== undefined) {
+			const parsedId = parseInt(task.id, 10);
+			if (!isNaN(parsedId) && parsedId > 0) {
+				task.id = parsedId;
+			}
+		}
+
+		// Convert subtask IDs to numbers with validation
+		if (Array.isArray(task.subtasks)) {
+			task.subtasks.forEach((subtask) => {
+				if (subtask.id !== undefined) {
+					// Check for dot notation (which shouldn't exist in storage)
+					if (typeof subtask.id === 'string' && subtask.id.includes('.')) {
+						// Extract the subtask part after the dot
+						const parts = subtask.id.split('.');
+						subtask.id = parseInt(parts[parts.length - 1], 10);
+					} else {
+						const parsedSubtaskId = parseInt(subtask.id, 10);
+						if (!isNaN(parsedSubtaskId) && parsedSubtaskId > 0) {
+							subtask.id = parsedSubtaskId;
+						}
+					}
+				}
+			});
+		}
+	});
+}
+
+/**
  * Reads and parses a JSON file
  * @param {string} filepath - Path to the JSON file
  * @param {string} [projectRoot] - Optional project root for tag resolution (used by MCP)
@@ -321,6 +358,8 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		if (isDebug) {
 			console.log(`File is in legacy format, performing migration...`);
 		}
+
+		normalizeTaskIds(data.tasks);
 
 		// This is legacy format - migrate it to tagged format
 		const migratedData = {
@@ -401,6 +440,16 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		// Store reference to the raw tagged data for functions that need it
 		const originalTaggedData = JSON.parse(JSON.stringify(data));
 
+		// Normalize IDs in all tags before storing as originalTaggedData
+		for (const tagName in originalTaggedData) {
+			if (
+				originalTaggedData[tagName] &&
+				Array.isArray(originalTaggedData[tagName].tasks)
+			) {
+				normalizeTaskIds(originalTaggedData[tagName].tasks);
+			}
+		}
+
 		// Check and auto-switch git tags if enabled (for existing tagged format)
 		// This needs to run synchronously BEFORE tag resolution
 		if (projectRoot) {
@@ -448,6 +497,8 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// Get the data for the resolved tag
 			const tagData = data[resolvedTag];
 			if (tagData && tagData.tasks) {
+				normalizeTaskIds(tagData.tasks);
+
 				// Add the _rawTaggedData property and the resolved tag to the returned data
 				const result = {
 					...tagData,
@@ -464,6 +515,8 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				// If the resolved tag doesn't exist, fall back to master
 				const masterData = data.master;
 				if (masterData && masterData.tasks) {
+					normalizeTaskIds(masterData.tasks);
+
 					if (isDebug) {
 						console.log(
 							`Tag '${resolvedTag}' not found, falling back to master with ${masterData.tasks.length} tasks`
@@ -493,6 +546,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// If anything goes wrong, try to return master or empty
 			const masterData = data.master;
 			if (masterData && masterData.tasks) {
+				normalizeTaskIds(masterData.tasks);
 				return {
 					...masterData,
 					_rawTaggedData: originalTaggedData
@@ -749,14 +803,28 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 			}
 		}
 
-		// If we have a projectRoot, we can sync tasks with Notion
+		// Read previous data before writing for Notion sync
+		let previousData = null;
 		if (projectRoot !== null) {
-			const previousData = readJSON(filepath, projectRoot);
+			try {
+				previousData = readJSON(filepath, projectRoot);
+			} catch (e) {
+				if (isDebug) {
+					console.warn('Could not read previous data for Notion sync:', e.message);
+				}
+			}
+		}
+
+		// Write the file first
+		fs.writeFileSync(filepath, JSON.stringify(cleanData, null, 2), 'utf8');
+
+		// Then sync with Notion using the previous data
+		if (projectRoot !== null && previousData) {
 			(async () => {
 				try {
 					const { syncTasksWithNotion } = await import('./notion.js');
 					syncTasksWithNotion(
-						previousData._rawTaggedData,
+						previousData._rawTaggedData || {},
 						cleanData,
 						projectRoot
 					);
@@ -764,13 +832,11 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 					console.warn('syncTasksWithNotion debug failed:', e);
 				}
 			})();
-		} else {
+		} else if (projectRoot === null) {
 			console.warn(
 				'writeJSON: No projectRoot provided, Notion sync will not be performed.'
 			);
 		}
-
-		fs.writeFileSync(filepath, JSON.stringify(cleanData, null, 2), 'utf8');
 
 		if (isDebug) {
 			console.log(`writeJSON: Successfully wrote to ${filepath}`);
@@ -1100,6 +1166,139 @@ function findCycles(
 }
 
 /**
+ * Unified dependency traversal utility that supports both forward and reverse dependency traversal
+ * @param {Array} sourceTasks - Array of source tasks to start traversal from
+ * @param {Array} allTasks - Array of all tasks to search within
+ * @param {Object} options - Configuration options
+ * @param {number} options.maxDepth - Maximum recursion depth (default: 50)
+ * @param {boolean} options.includeSelf - Whether to include self-references (default: false)
+ * @param {'forward'|'reverse'} options.direction - Direction of traversal (default: 'forward')
+ * @param {Function} options.logger - Optional logger function for warnings
+ * @returns {Array} Array of all dependency task IDs found through traversal
+ */
+function traverseDependencies(sourceTasks, allTasks, options = {}) {
+	const {
+		maxDepth = 50,
+		includeSelf = false,
+		direction = 'forward',
+		logger = null
+	} = options;
+
+	const dependentTaskIds = new Set();
+	const processedIds = new Set();
+
+	// Helper function to normalize dependency IDs while preserving subtask format
+	function normalizeDependencyId(depId) {
+		if (typeof depId === 'string') {
+			// Preserve string format for subtask IDs like "1.2"
+			if (depId.includes('.')) {
+				return depId;
+			}
+			// Convert simple string numbers to numbers for consistency
+			const parsed = parseInt(depId, 10);
+			return isNaN(parsed) ? depId : parsed;
+		}
+		return depId;
+	}
+
+	// Helper function for forward dependency traversal
+	function findForwardDependencies(taskId, currentDepth = 0) {
+		// Check depth limit
+		if (currentDepth >= maxDepth) {
+			const warnMsg = `Maximum recursion depth (${maxDepth}) reached for task ${taskId}`;
+			if (logger && typeof logger.warn === 'function') {
+				logger.warn(warnMsg);
+			} else if (typeof log !== 'undefined' && log.warn) {
+				log.warn(warnMsg);
+			} else {
+				console.warn(warnMsg);
+			}
+			return;
+		}
+
+		if (processedIds.has(taskId)) {
+			return; // Avoid infinite loops
+		}
+		processedIds.add(taskId);
+
+		const task = allTasks.find((t) => t.id === taskId);
+		if (!task || !Array.isArray(task.dependencies)) {
+			return;
+		}
+
+		task.dependencies.forEach((depId) => {
+			const normalizedDepId = normalizeDependencyId(depId);
+
+			// Skip invalid dependencies and optionally skip self-references
+			if (
+				normalizedDepId == null ||
+				(!includeSelf && normalizedDepId === taskId)
+			) {
+				return;
+			}
+
+			dependentTaskIds.add(normalizedDepId);
+			// Recursively find dependencies of this dependency
+			findForwardDependencies(normalizedDepId, currentDepth + 1);
+		});
+	}
+
+	// Helper function for reverse dependency traversal
+	function findReverseDependencies(taskId, currentDepth = 0) {
+		// Check depth limit
+		if (currentDepth >= maxDepth) {
+			const warnMsg = `Maximum recursion depth (${maxDepth}) reached for task ${taskId}`;
+			if (logger && typeof logger.warn === 'function') {
+				logger.warn(warnMsg);
+			} else if (typeof log !== 'undefined' && log.warn) {
+				log.warn(warnMsg);
+			} else {
+				console.warn(warnMsg);
+			}
+			return;
+		}
+
+		if (processedIds.has(taskId)) {
+			return; // Avoid infinite loops
+		}
+		processedIds.add(taskId);
+
+		allTasks.forEach((task) => {
+			if (task.dependencies && Array.isArray(task.dependencies)) {
+				const dependsOnTaskId = task.dependencies.some((depId) => {
+					const normalizedDepId = normalizeDependencyId(depId);
+					return normalizedDepId === taskId;
+				});
+
+				if (dependsOnTaskId) {
+					// Skip invalid dependencies and optionally skip self-references
+					if (task.id == null || (!includeSelf && task.id === taskId)) {
+						return;
+					}
+
+					dependentTaskIds.add(task.id);
+					// Recursively find tasks that depend on this task
+					findReverseDependencies(task.id, currentDepth + 1);
+				}
+			}
+		});
+	}
+
+	// Choose traversal function based on direction
+	const traversalFunc =
+		direction === 'reverse' ? findReverseDependencies : findForwardDependencies;
+
+	// Start traversal from each source task
+	sourceTasks.forEach((sourceTask) => {
+		if (sourceTask && sourceTask.id) {
+			traversalFunc(sourceTask.id);
+		}
+	});
+
+	return Array.from(dependentTaskIds);
+}
+
+/**
  * Convert a string from camelCase to kebab-case
  * @param {string} str - The string to convert
  * @returns {string} The kebab-case version of the string
@@ -1397,6 +1596,20 @@ function ensureTagMetadata(tagObj, opts = {}) {
 	return tagObj;
 }
 
+/**
+ * Strip ANSI color codes from a string
+ * Useful for testing, logging to files, or when clean text output is needed
+ * @param {string} text - The text that may contain ANSI color codes
+ * @returns {string} - The text with ANSI color codes removed
+ */
+function stripAnsiCodes(text) {
+	if (typeof text !== 'string') {
+		return text;
+	}
+	// Remove ANSI escape sequences (color codes, cursor movements, etc.)
+	return text.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
 // Export all utility functions and configuration
 export {
 	LOG_LEVELS,
@@ -1412,6 +1625,7 @@ export {
 	truncate,
 	isEmpty,
 	findCycles,
+	traverseDependencies,
 	toKebabCase,
 	detectCamelCaseFlags,
 	disableSilentMode,
@@ -1433,5 +1647,7 @@ export {
 	createStateJson,
 	markMigrationForNotice,
 	flattenTasksWithSubtasks,
-	ensureTagMetadata
+	ensureTagMetadata,
+	stripAnsiCodes,
+	normalizeTaskIds
 };

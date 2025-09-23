@@ -3,7 +3,7 @@ import boxen from 'boxen';
 import readline from 'readline';
 import fs from 'fs';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import { log, readJSON, isSilentMode } from '../utils.js';
 
 import {
 	startLoadingIndicator,
@@ -13,12 +13,17 @@ import {
 
 import { generateTextService } from '../ai-services-unified.js';
 
-import { getDebugFlag, getProjectName } from '../config-manager.js';
+import {
+	getDebugFlag,
+	getProjectName,
+	hasCodebaseAnalysis
+} from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_TASKS_FILE
 } from '../../../src/constants/paths.js';
+import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
 import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
@@ -409,10 +414,18 @@ async function analyzeTaskComplexity(options, context = {}) {
 		// Load prompts using PromptManager
 		const promptManager = getPromptManager();
 
+		// Check if Claude Code is being used as the provider
+
 		const promptParams = {
 			tasks: tasksData.tasks,
 			gatheredContext: gatheredContext || '',
-			useResearch: useResearch
+			useResearch: useResearch,
+			hasCodebaseAnalysis: hasCodebaseAnalysis(
+				useResearch,
+				projectRoot,
+				session
+			),
+			projectRoot: projectRoot || ''
 		};
 
 		const { systemPrompt, userPrompt: prompt } = await promptManager.loadPrompt(
