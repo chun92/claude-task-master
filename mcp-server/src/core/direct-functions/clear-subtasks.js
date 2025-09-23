@@ -108,7 +108,7 @@ export async function clearSubtasksDirect(args, log) {
 		enableSilentMode();
 
 		// Call the core function
-		clearSubtasks(tasksPath, taskIds, { projectRoot, tag: currentTag });
+		await clearSubtasks(tasksPath, taskIds, { projectRoot, tag: currentTag });
 
 		// Restore normal logging
 		disableSilentMode();

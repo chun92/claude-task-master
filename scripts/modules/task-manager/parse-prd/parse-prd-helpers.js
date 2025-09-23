@@ -180,7 +180,7 @@ export function processTasks(
  * @param {Object} logger - Logger instance
  * @param {string} projectRoot - Project root path for Notion sync
  */
-export function saveTasksToFile(tasksPath, tasks, targetTag, logger, projectRoot = null) {
+export async function saveTasksToFile(tasksPath, tasks, targetTag, logger, projectRoot = null) {
 	// Create directory if it doesn't exist
 	const tasksDir = path.dirname(tasksPath);
 	if (!fs.existsSync(tasksDir)) {
@@ -214,45 +214,14 @@ export function saveTasksToFile(tasksPath, tasks, targetTag, logger, projectRoot
 		description: `Tasks for ${targetTag} context`
 	});
 
-	// Write back to file
-	fs.writeFileSync(tasksPath, JSON.stringify(outputData, null, 2));
+	// Use writeJSON from utils.js for consistent Notion sync handling
+	const { writeJSON } = await import('../../utils.js');
+	writeJSON(tasksPath, outputData, projectRoot);
 
 	logger.report(
 		`Successfully saved ${tasks.length} tasks to ${tasksPath}`,
 		'debug'
 	);
-
-	// Sync with Notion if configured
-	if (projectRoot) {
-		(async () => {
-			try {
-				const { syncTasksWithNotion } = await import('../../notion.js');
-				logger.report('Starting Notion sync...', 'debug');
-
-				// Read previous tasks data for comparison (using same approach as utils.js)
-				let prevTasks = {};
-				try {
-					const { readJSON } = await import('../../utils.js');
-					const previousData = readJSON(tasksPath, projectRoot);
-					prevTasks = previousData._rawTaggedData || {};
-				} catch (readError) {
-					logger.report(`Could not read previous tasks for Notion sync: ${readError.message}`, 'warn');
-					prevTasks = {};
-				}
-
-				await syncTasksWithNotion(
-					prevTasks,
-					outputData,
-					projectRoot
-				);
-				logger.report('Notion sync completed successfully', 'debug');
-			} catch (e) {
-				logger.report(`Notion sync failed: ${e.message}`, 'warn');
-			}
-		})();
-	} else {
-		logger.report('No projectRoot provided, skipping Notion sync', 'debug');
-	}
 }
 
 /**

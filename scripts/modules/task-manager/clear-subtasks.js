@@ -14,7 +14,7 @@ import { displayBanner } from '../ui.js';
  * @param {string} [context.projectRoot] - Project root path
  * @param {string} [context.tag] - Tag for the task
  */
-function clearSubtasks(tasksPath, taskIds, context = {}) {
+async function clearSubtasks(tasksPath, taskIds, context = {}) {
 	const { projectRoot, tag } = context;
 	log('info', `Reading tasks from ${tasksPath}...`);
 	const data = readJSON(tasksPath, projectRoot, tag);

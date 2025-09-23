@@ -609,7 +609,9 @@ async function analyzeTaskComplexity(options, context = {}) {
 			try {
 				await updateNotionComplexityForCurrentTag(projectRoot);
 			} catch (notionErr) {
-				console.warn(`Warning: Failed to update Notion complexity: ${notionErr.message}`);
+				console.warn(
+					`Warning: Failed to update Notion complexity: ${notionErr.message}`
+				);
 			}
 
 			reportLog(

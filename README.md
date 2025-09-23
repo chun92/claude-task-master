@@ -6,41 +6,6 @@ It extends the local task management features of Task Master by synchronizing yo
 ![Notion Kanban Screenshot](https://raw.githubusercontent.com/chun92/claude-task-master/main/screenshot/notion2.png)
 ![Notion Task Page Screenshot](https://raw.githubusercontent.com/chun92/claude-task-master/main/screenshot/notion1.png)
 
-<div align='center'>
-<a href="https://trendshift.io/repositories/13971" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13971" alt="eyaltoledano%2Fclaude-task-master | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</div>
-
-<p align="center">
-  <a href="https://task-master.dev"><img src="./images/logo.png?raw=true" alt="Taskmaster logo"></a>
-</p>
-
-<p align="center">
-<b>Taskmaster</b>: A task management system for AI-driven development, designed to work seamlessly with any AI chat.
-</p>
-
-<p align="center">
-  <a href="https://discord.gg/taskmasterai" target="_blank"><img src="https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat" alt="Discord"></a> |
-  <a href="https://docs.task-master.dev" target="_blank">Docs</a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml"><img src="https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/eyaltoledano/claude-task-master/stargazers"><img src="https://img.shields.io/github/stars/eyaltoledano/claude-task-master?style=social" alt="GitHub stars"></a>
-  <a href="https://badge.fury.io/js/task-master-ai"><img src="https://badge.fury.io/js/task-master-ai.svg" alt="npm version"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT%20with%20Commons%20Clause-blue.svg" alt="License"></a>
-</p>
-
-<p align="center">
-  <a href="https://www.npmjs.com/package/task-master-ai"><img src="https://img.shields.io/npm/d18m/task-master-ai?style=flat" alt="NPM Downloads"></a>
-  <a href="https://www.npmjs.com/package/task-master-ai"><img src="https://img.shields.io/npm/dm/task-master-ai?style=flat" alt="NPM Downloads"></a>
-  <a href="https://www.npmjs.com/package/task-master-ai"><img src="https://img.shields.io/npm/dw/task-master-ai?style=flat" alt="NPM Downloads"></a>
-</p>
-
-## By [@eyaltoledano](https://x.com/eyaltoledano) & [@RalphEcom](https://x.com/RalphEcom)
-
-[![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano)](https://x.com/eyaltoledano)
-[![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom)](https://x.com/RalphEcom)
-
 ## Features
 
 - Dump all Task Master tasks into a Notion database.
@@ -87,8 +52,6 @@ For basic installation and setup, refer to the [original documentation](https://
    # Run the following only if you want to use the command globally:
    npm link
    ```
-
-[![Add task-master-ai MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=task-master-ai&config=eyJjb21tYW5kIjoibnB4IC15IC0tcGFja2FnZT10YXNrLW1hc3Rlci1haSB0YXNrLW1hc3Rlci1haSIsImVudiI6eyJBTlRIUk9QSUNfQVBJX0tFWSI6IllPVVJfQU5USFJPUElDX0FQSV9LRVlfSEVSRSIsIlBFUlBMRVhJVFlfQVBJX0tFWSI6IllPVVJfUEVSUExFWElUWV9BUElfS0VZX0hFUkUiLCJPUEVOQUlfQVBJX0tFWSI6IllPVVJfT1BFTkFJX0tFWV9IRVJFIiwiR09PR0xFX0FQSV9LRVkiOiJZT1VSX0dPT0dMRV9LRVlfSEVSRSIsIk1JU1RSQUxfQVBJX0tFWSI6IllPVVJfTUlTVFJBTF9LRVlfSEVSRSIsIkdST1FfQVBJX0tFWSI6IllPVVJfR1JPUV9LRVlfSEVSRSIsIk9QRU5ST1VURVJfQVBJX0tFWSI6IllPVVJfT1BFTlJPVVRFUl9LRVlfSEVSRSIsIlhBSV9BUElfS0VZIjoiWU9VUl9YQUlfS0VZX0hFUkUiLCJBWlVSRV9PUEVOQUlfQVBJX0tFWSI6IllPVVJfQVpVUkVfS0VZX0hFUkUiLCJPTExBTUFfQVBJX0tFWSI6IllPVVJfT0xMQU1BX0FQSV9LRVlfSEVSRSJ9fQ%3D%3D)
 
 #### MCP Setup Example
 
@@ -142,112 +105,135 @@ All updates to tasks in your project will be processed in bulk.
 
 After completing all setup, when you run Task Master commands such as `parse-prd`, `update`, `analyze-complexity`, or `set-status` to update the state of your tasks, those tasks will be automatically synced to Notion.
 
-#### 6. Common Commands
+### Notion Sync Management Commands
 
-Use your AI assistant to:
+For maintaining and troubleshooting your Notion synchronization, the following commands are available:
 
-- Parse requirements: `Can you parse my PRD at scripts/prd.txt?`
-- Plan next step: `What's the next task I should work on?`
-- Implement a task: `Can you help me implement task 3?`
-- View multiple tasks: `Can you show me tasks 1, 3, and 5?`
-- Expand a task: `Can you help me expand task 4?`
-- **Research fresh information**: `Research the latest best practices for implementing JWT authentication with Node.js`
-- **Research with context**: `Research React Query v5 migration strategies for our current API implementation in src/api.js`
-
-[More examples on how to use Task Master in chat](docs/examples.md)
-
-### Option 2: Using Command Line
-
-#### Installation
-
-```bash
-# Install globally
-npm install -g task-master-ai-notion
-
-# OR install locally within your project
-npm install task-master-ai-notion
+#### Validate Notion Sync
+```sh
+task-master-notion validate-notion-sync
 ```
+Validates the integrity of your Notion synchronization by:
+- Checking for orphaned pages in Notion
+- Identifying local tasks without corresponding Notion pages  
+- Detecting synchronization inconsistencies
+- Providing detailed diagnostic reports
 
-#### Initialize a new project
-
-```bash
-# If installed globally
-task-master-notion init
-
-# If installed locally
-npx task-master-notion init
-
-# Initialize project with specific rules
-task-master-notion init --rules cursor,windsurf,vscode
+#### Repair Notion Sync
+```sh
+task-master-notion repair-notion-db [options]
 ```
+Repairs synchronization issues and manages duplicate pages:
+- `--preserve-extra-tasks`: Keep tasks you've created manually in Notion while still syncing with TaskMaster
+- Removes orphaned pages and duplicate entries
+- Fixes mapping inconsistencies between local tasks and Notion pages
+- Provides comprehensive repair reports
 
-This will prompt you for project details and set up a new project with the necessary files and structure.
-
-#### Common Commands
-
-```bash
-# Initialize a new project
-task-master-notion init
-
-# Parse a PRD and generate tasks
-task-master-notion parse-prd your-prd.txt
-
-# List all tasks
-task-master-notion list
-
-# Show the next task to work on
-task-master-notion next
-
-# Show specific task(s) - supports comma-separated IDs
-task-master-notion show 1,3,5
-
-# Research fresh information with project context
-task-master-notion research "What are the latest best practices for JWT authentication?"
-
-# Move tasks between tags (cross-tag movement)
-task-master-notion move --from=5 --from-tag=backlog --to-tag=in-progress
-task-master-notion move --from=5,6,7 --from-tag=backlog --to-tag=done --with-dependencies
-task-master-notion move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies
-
-# Generate task files
-task-master-notion generate
-
-# Add rules after initialization
-task-master-notion rules add windsurf,roo,vscode
+#### Reset Notion Database
+```sh
+task-master-notion reset-notion-db
 ```
+Completely resets your Notion database:
+- **⚠️ Warning**: This will delete all pages in your Notion database
+- Useful for starting fresh or resolving complex synchronization issues
+- Requires confirmation before proceeding
+- All local tasks will be re-synced to Notion after reset
 
-## Claude Code Support
+## VS Code Extension Installation
 
-Task Master now supports Claude models through the Claude Code CLI, which requires no API key:
+In addition to the command-line interface and MCP integration, Task Master Notion now includes a **VS Code Extension** that provides a visual Kanban board interface with full Notion synchronization support.
 
-- **Models**: `claude-code/opus` and `claude-code/sonnet`
-- **Requirements**: Claude Code CLI installed
-- **Benefits**: No API key needed, uses your local Claude instance
+### Installation Steps
 
-[Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
+#### Option 1: Install Pre-built VSIX (Recommended)
 
-## Troubleshooting
+1. **Download the Extension**:
+   - Download the latest VSIX file from the [releases page](https://github.com/chun92/claude-task-master/releases)
+   - Or build locally (see Option 2 below)
 
-### If `task-master-notion init` doesn't respond
+2. **Install via VS Code**:
+   ```bash
+   # Method 1: Command line
+   code --install-extension path/to/task-master-notion-extension-0.23.0.vsix
 
-Try running it with Node directly:
+   # Method 2: VS Code UI
+   # 1. Open VS Code
+   # 2. Press Ctrl+Shift+P (or Cmd+Shift+P on Mac)
+   # 3. Type "Extensions: Install from VSIX..."
+   # 4. Select the downloaded VSIX file
+   ```
 
-```bash
-node node_modules/task-master-ai-notion/scripts/init.js
-```
+3. **Configure Extension Settings**:
+   - Open VS Code Settings (`Ctrl+,`)
+   - Search for "taskmaster"
+   - Ensure the following settings are configured:
+     ```json
+     {
+       "taskmaster.mcp.command": "task-master-notion-mcp",
+       "taskmaster.mcp.args": [],
+       "taskmaster.mcp.env": {
+         "NOTION_TOKEN": "your_notion_token_here",
+         "NOTION_DATABASE_ID": "your_database_id_here",
+         "ANTHROPIC_API_KEY": "your_api_key_here"
+       }
+     }
+     ```
 
-Or clone the repository and run:
+#### Option 2: Build from Source
 
-```bash
-git clone https://github.com/chun92/claude-task-master.git
-cd claude-task-master
-node scripts/init.js
-```
+1. **Clone and Build**:
+   ```bash
+   git clone https://github.com/chun92/claude-task-master
+   cd claude-task-master/apps/extension
+   npm install
+   npm run package
+   cd vsix-build
+   npx vsce package --no-dependencies
+   ```
+
+2. **Install Built Extension**:
+   ```bash
+   code --install-extension task-master-notion-extension-0.23.0.vsix
+   ```
+
+### Features
+
+The VS Code Extension provides:
+
+- **🎯 Kanban Board View**: Visual task management with drag-and-drop functionality
+- **📋 Task Details Panel**: Rich task information with subtasks, dependencies, and notes
+- **🔄 Real-time Notion Sync**: All changes automatically sync to your Notion database
+- **🏷️ Tag Support**: Switch between different task contexts
+- **⚡ scope-up/scope-down**: AI-powered task complexity adjustment
+- **📊 Task Status Management**: Easy status updates with visual feedback
+
+### Usage
+
+1. **Open Task Master Panel**:
+   - Click the TaskMaster icon in the Activity Bar
+   - Or use `Ctrl+Shift+P` → "TaskMaster: Show Board"
+
+2. **Manage Tasks Visually**:
+   - Drag tasks between status columns
+   - Click tasks to view/edit details
+   - Use AI actions to expand or adjust task complexity
+
+3. **Notion Integration**:
+   - All changes are automatically synced to Notion
+   - Create rich task details in Notion that sync back to VS Code
+   - Use Notion's database views alongside the VS Code interface
+
+### Troubleshooting
+
+- **Connection Issues**: Check that `task-master-notion-mcp` command is available in your PATH
+- **Sync Problems**: Verify NOTION_TOKEN and NOTION_DATABASE_ID in extension settings
+- **Performance**: Large task lists (>100 tasks) may experience slower loading
 
 ## Cautions
 
-- It is recommended to use this tool from the console.
-- MCP mode is supported, but some issues may occur during testing.
+- It is recommended to use this tool from the console for complex operations.
+- MCP mode is supported and stable with the latest updates.
+- The VS Code Extension provides the best visual experience with full Notion sync support.
 - `task-master-notion` shares the same `tasks.json` file as the original `task-master` and can be used together, but for stability, it is recommended to use only one tool at a time. If you use your existing `tasks.json` from `task-master` with `task-master-notion`, it is strongly recommended to make a backup just in case. The author is not responsible for any loss or corruption of your original file.
 
 ## Known Bugs (Current Version)
@@ -259,8 +245,12 @@ node scripts/init.js
 | Original Version | Notion Sync Support |
 |------------------|--------------------|
 | v0.26.0          | Supported          |
-| v0.21.0          | Supported          |
-| v0.20.0          | Supported          |
+| v.0.25.0         | Supported          |
+| v.0.24.0         | Supported          |
+| v.0.23.0         | Supported          |
+| v.0.22.0         | Supported          |
+| v.0.21.0         | Supported          |
+| v.0.20.0         | Supported          |
 | Earlier versions | Not supported      |
 
 This fork will continue to track and update for versions after v0.20.0
@@ -275,11 +265,3 @@ Task Master is licensed under the MIT License with Commons Clause. See the [LICE
 - [@RalphEcom](https://x.com/RalphEcom)
 - [@jasonzhou1993](https://x.com/jasonzhou1993)
 - See [contributors](https://github.com/eyaltoledano/claude-task-master/graphs/contributors)
-
-<a href="https://github.com/eyaltoledano/claude-task-master/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=eyaltoledano/claude-task-master" alt="Task Master project contributors" />
-</a>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=eyaltoledano/claude-task-master&type=Timeline)](https://www.star-history.com/#eyaltoledano/claude-task-master&Timeline)

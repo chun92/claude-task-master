@@ -24,6 +24,11 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	displayBanner: jest.fn()
 }));
 
+// Mock the notion.js module for sync functionality
+jest.unstable_mockModule('../../../../../scripts/modules/notion.js', () => ({
+	syncTasksWithNotion: jest.fn().mockResolvedValue()
+}));
+
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/task-manager/generate-task-files.js',
 	() => ({
@@ -73,6 +78,9 @@ const generateTaskFiles = (
 		'../../../../../scripts/modules/task-manager/generate-task-files.js'
 	)
 ).default;
+const { syncTasksWithNotion } = await import(
+	'../../../../../scripts/modules/notion.js'
+);
 
 // Import the module under test
 const { default: clearSubtasks } = await import(
@@ -120,14 +128,14 @@ describe('clearSubtasks', () => {
 		log.mockImplementation(() => {});
 	});
 
-	test('should clear subtasks from a specific task', () => {
+	test('should clear subtasks from a specific task', async () => {
 		// Arrange
 		const taskId = '3';
 		const tasksPath = 'tasks/tasks.json';
 		const context = { tag: 'master' };
 
 		// Act
-		clearSubtasks(tasksPath, taskId, context);
+		await clearSubtasks(tasksPath, taskId, context);
 
 		// Assert
 		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
@@ -147,6 +155,20 @@ describe('clearSubtasks', () => {
 			}),
 			undefined,
 			'master'
+		);
+		// Should also call syncTasksWithNotion for Notion integration
+		expect(syncTasksWithNotion).toHaveBeenCalledWith(
+			expect.objectContaining({
+				master: expect.objectContaining({
+					tasks: expect.any(Array)
+				})
+			}),
+			expect.objectContaining({
+				master: expect.objectContaining({
+					tasks: expect.any(Array)
+				})
+			}),
+			undefined
 		);
 	});
 
